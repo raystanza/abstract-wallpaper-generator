@@ -1,16 +1,50 @@
-const { program } = require('commander');
-const generateWallpaper = require('./src/generateWallpaper');
+const express = require('express');
+const path = require('path');
+const bodyParser = require('body-parser');
+const { generateWallpaper, registerGenerator } = require('./src/generateWallpaper');
 
-program
-    .option('-w, --width <number>', 'Width of the wallpaper', '1920')
-    .option('-h, --height <number>', 'Height of the wallpaper', '1080')
-    .option('-o, --output <path>', 'Output file path', `./output/wallpaper_${Date.now()}.png`);
+// Import and register generators
+const drawShapes = require('./src/generators/shapes');
+const drawFractal = require('./src/generators/fractals');
+const drawWaves = require('./src/generators/waves');
+const drawBubbles = require('./src/generators/bubbles');
+const drawBokeh = require('./src/generators/bokeh');
+const drawFire = require('./src/generators/fire');
+const drawIce = require('./src/generators/ice');
+const drawSnow = require('./src/generators/snow');
+const drawWater = require('./src/generators/water');
 
-program.parse(process.argv);
+registerGenerator('shapes', drawShapes);
+registerGenerator('fractals', drawFractal);
+registerGenerator('waves', drawWaves);
+registerGenerator('bubbles', drawBubbles);
+registerGenerator('bokeh', drawBokeh);
+registerGenerator('fire', drawFire);
+registerGenerator('ice', drawIce);
+registerGenerator('snow', drawSnow);
+registerGenerator('water', drawWater);
 
-const options = program.opts();
-const width = parseInt(options.width, 10);
-const height = parseInt(options.height, 10);
-const outputFile = options.output;
+const app = express();
+const port = 3000;
 
-generateWallpaper(width, height, outputFile);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.post('/generate', (req, res) => {
+    const width = parseInt(req.body.width, 10);
+    const height = parseInt(req.body.height, 10);
+    const shapes = parseInt(req.body.shapes, 10);
+    const shapeTypes = Array.isArray(req.body.shapeTypes) ? req.body.shapeTypes : [req.body.shapeTypes];
+    const colorPalette = req.body.colorPalette;
+    const generationType = req.body.generationType;
+
+    const outputFilename = `wallpaper_${Date.now()}.png`;
+    const outputFile = path.join(__dirname, 'output', outputFilename);
+
+    generateWallpaper(width, height, shapes, shapeTypes, colorPalette, generationType, outputFile);
+    res.sendFile(outputFile);
+});
+
+app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+});

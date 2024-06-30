@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abstract Wallpaper Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Abstract Wallpaper Generator</h1>
+            <form id="wallpaperForm">
+                <div class="form-group">
+                    <label for="width">Width:</label>
+                    <input type="number" id="width" name="width" value="1920" required>
+                </div>
+                <div class="form-group">
+                    <label for="height">Height:</label>
+                    <input type="number" id="height" name="height" value="1080" required>
+                </div>
+                <div class="form-group">
+                    <label for="shapes">Number of Shapes:</label>
+                    <input type="number" id="shapes" name="shapes" value="50" required>
+                </div>
+                <div class="form-group">
+                    <label for="shapeTypes">Shape Types:</label>
+                    <select id="shapeTypes" name="shapeTypes" multiple required>
+                        <option value="circle" selected>Circle</option>
+                        <option value="rectangle" selected>Rectangle</option>
+                        <option value="triangle" selected>Triangle</option>
+                        <option value="hexagon" selected>Hexagon</option>
+                        <option value="rhombus" selected>Rhombus</option>
+                        <option value="star" selected>Star</option>
+                        <option value="spiral" selected>Spiral</option>
+                        <option value="ellipse" selected>Ellipse</option>
+                        <option value="pentagon" selected>Pentagon</option>
+                        <option value="heart" selected>Heart</option>
+                        <option value="diamond" selected>Diamond</option>
+                        <option value="cross" selected>Cross</option>
+                        <option value="arrow" selected>Arrow</option>
+                        <option value="parallelogram" selected>Parallelogram</option>
+                        <option value="trapezoid" selected>Trapezoid</option>
+                        <option value="wave" selected>Wave</option>
+                        <option value="zigzag" selected>Zigzag</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="colorPalette">Color Palette:</label>
+                    <select id="colorPalette" name="colorPalette" required>
+                        <option value="warm">Warm</option>
+                        <option value="cool">Cool</option>
+                        <option value="mixed">Mixed</option>
+                        <option value="sunrise">Sunrise</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="forest">Forest</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="pastel">Pastel</option>
+                        <option value="neon">Neon</option>
+                        <option value="earth">Earth</option>
+                        <option value="galaxy">Galaxy</option>
+                        <option value="candy">Candy</option>
+                    </select>
+                </div>                
+                <div class="form-group">
+                    <label for="generationType">Generation Type:</label>
+                    <select id="generationType" name="generationType" required>
+                        <option value="shapes" selected>Shapes</option>
+                        <option value="fractals">Fractals</option>
+                        <option value="waves">Waves</option>
+                        <option value="bubbles">Bubbles</option>
+                        <option value="bokeh">Bokeh</option>
+                        <option value="water">Water</option>
+                        <option value="ice">Ice</option>
+                        <option value="fire">Fire</option>
+                        <option value="snow">Snow</option>
+                    </select>
+                </div>
+                <button type="submit">Generate Wallpaper</button>
+            </form>
+        </div>
+        <div class="card preview-card">
+            <h2>Wallpaper Preview</h2>
+            <img id="preview" alt="Wallpaper Preview" class="hidden">
+            <a id="downloadLink" class="hidden" download="wallpaper.png">Download Wallpaper</a>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
