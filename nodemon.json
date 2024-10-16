@@ -1,0 +1,7 @@
+{
+  "watch": ["src", "public", "views", "index.js"],
+  "ext": "js,json,css,html",
+  "ignore": ["output/*", "node_modules/*"],
+  "exec": "node index.js",
+  "delay": "250"
+}

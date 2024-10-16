@@ -1,3 +1,4 @@
+// index.js
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -30,7 +31,7 @@ const port = 3000;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/generate', (req, res) => {
+app.post('/generate', async (req, res) => {
     const width = parseInt(req.body.width, 10);
     const height = parseInt(req.body.height, 10);
     const shapes = parseInt(req.body.shapes, 10);
@@ -41,8 +42,13 @@ app.post('/generate', (req, res) => {
     const outputFilename = `wallpaper_${Date.now()}.png`;
     const outputFile = path.join(__dirname, 'output', outputFilename);
 
-    generateWallpaper(width, height, shapes, shapeTypes, colorPalette, generationType, outputFile);
-    res.sendFile(outputFile);
+    try {
+        await generateWallpaper(width, height, shapes, shapeTypes, colorPalette, generationType, outputFile);
+        res.sendFile(outputFile);
+    } catch (error) {
+        console.error('Error generating wallpaper:', error);
+        res.status(500).send('An error occurred while generating the wallpaper.');
+    }
 });
 
 app.listen(port, () => {
