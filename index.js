@@ -6,7 +6,12 @@ const { generateWallpaper, registerGenerator } = require('./src/generateWallpape
 
 // Import and register generators
 const drawShapes = require('./src/generators/shapes');
-const drawFractal = require('./src/generators/fractals');
+const drawFractalTree = require('./src/generators/fractal-tree');
+const drawBarnsleyFern = require('./src/generators/barnsley-fern');
+const drawJuliaSet = require('./src/generators/julia-set');
+const drawKochSnowflake = require('./src/generators/koch-snowflake');
+const drawMandelbrotSet = require('./src/generators/mandelbrot-set');
+const drawSierpinskiTriangle = require('./src/generators/sierpinski-triangle');
 const drawWaves = require('./src/generators/waves');
 const drawBubbles = require('./src/generators/bubbles');
 const drawBokeh = require('./src/generators/bokeh');
@@ -16,7 +21,12 @@ const drawSnow = require('./src/generators/snow');
 const drawWater = require('./src/generators/water');
 
 registerGenerator('shapes', drawShapes);
-registerGenerator('fractals', drawFractal);
+registerGenerator('fractal-tree', drawFractalTree);
+registerGenerator('barnsley-fern', drawBarnsleyFern);
+registerGenerator('julia-set', drawJuliaSet);
+registerGenerator('koch-snowflake', drawKochSnowflake);
+registerGenerator('mandelbrot-set', drawMandelbrotSet);
+registerGenerator('sierpinski-triangle', drawSierpinskiTriangle);
 registerGenerator('waves', drawWaves);
 registerGenerator('bubbles', drawBubbles);
 registerGenerator('bokeh', drawBokeh);
