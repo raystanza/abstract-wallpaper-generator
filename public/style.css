@@ -1,100 +1,243 @@
+/* Body Styling */
 body {
-    font-family: Arial, sans-serif;
-    background: #f0f0f0;
+    font-family: 'Roboto', sans-serif;
+    background: radial-gradient(circle at center, #000000, #000000);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    color: #fff;
+    text-shadow: 0 0 10px #00ffea; /* More pronounced text glow */
+    overflow: hidden;
+    position: relative;
 }
 
+/* CRT Effect - Highly Visible Scanlines */
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        rgba(255, 255, 255, 0.1) 0px,   /* Brighter lines */
+        rgba(255, 255, 255, 0.1) 2px,
+        transparent 2px,
+        transparent 5px   /* More spacing between lines */
+    );
+    opacity: 0.9; /* More visible scan lines */
+    z-index: 1;
+}
+
+/* CRT Effect - Strong Glow and Vignette combined */
+body::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle, rgba(25, 25, 25, 0.35), transparent 35%), /* Stronger phosphor glow */
+        radial-gradient(circle, rgba(17, 17, 17, 0.6), transparent 70%); /* Stronger vignette effect */
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: screen; /* Enhance the glow blending */
+}
+
+/* Container for Cards */
 .container {
     display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
     gap: 20px;
 }
 
+/* Card Styling (CRT Screen Curvature) */
 .card {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s;
-    max-width: 400px;
+    background: #1e1e1e;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s, box-shadow 0.3s;
+    max-width: 450px;
     width: 100%;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #ff00ff;
+    transform: perspective(1000px) rotateX(1deg); /* Slight curvature */
 }
 
 .card:hover {
-    transform: translateY(-10px);
+    transform: translateY(-10px) perspective(1000px) rotateX(2deg); /* More pronounced curvature on hover */
+    box-shadow: 0 12px 24px rgba(255, 0, 255, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Enhancing Text Glow for Phosphor Effect */
+h1, h2 {
+    color: #ff00ff;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    font-weight: bold;
+    text-shadow: 0 0 15px rgba(255, 0, 255, 0.9), 0 0 30px rgba(0, 255, 234, 0.8); /* Strong phosphor glow */
 }
 
 h1 {
-    margin-bottom: 20px;
-    color: #333;
+    font-size: 2em;
 }
 
 h2 {
-    margin-bottom: 10px;
-    color: #333;
+    font-size: 1.5em;
 }
 
+/* CRT Noise Effect */
+.crt-noise {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAGgwJ/lSUdbQAAAABJRU5ErkJggg==');
+    opacity: 0.1; /* Adjust opacity for stronger or weaker noise effect */
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Spinner Styling */
+.loading-spinner {
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #fff;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Form Group Styling */
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     text-align: left;
 }
 
 label {
     display: block;
-    margin-bottom: 5px;
-    color: #333;
+    margin-bottom: 8px;
+    color: #00ffea;
+    font-weight: bold;
+    text-shadow: 0 0 5px #00ffea;
 }
 
-input, select, button {
-    width: 100%;
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
+input, select {
+    width: 90%;
+    padding: 12px;
+    border-radius: 6px;
+    border: 2px solid #ff00ff;
+    background-color: #121212;
+    color: #fff;
+    font-size: 1em;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
 }
 
+input:focus, select:focus {
+    border-color: #00ffea;
+    box-shadow: 0 0 12px #00ffea, 0 0 8px #ff00ff;
+}
+
+/* Button Styling */
 button {
-    background: #007BFF;
-    color: white;
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #ff00ff, #00ffea);
+    color: #000;
     border: none;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.3s;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: background 0.3s, transform 0.3s;
+    box-shadow: 0 4px 12px rgba(255, 0, 255, 0.6);
 }
 
 button:hover {
-    background: #0056b3;
+    background: linear-gradient(135deg, #00ffea, #ff00ff);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 255, 234, 0.5);
 }
 
+button:disabled {
+    background: #444;
+    color: #888;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Preview Card Styling */
 .preview-card {
     max-width: 600px;
+    background: #1e1e1e;
+    border: 2px solid #00ffea;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 255, 234, 0.2);
 }
 
 #preview {
     max-width: 100%;
     margin-top: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid #ff00ff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(255, 0, 255, 0.3);
 }
 
+/* Download Link Styling */
 #downloadLink {
     display: block;
-    margin-top: 10px;
-    padding: 10px;
-    background: #28a745;
-    color: white;
+    margin-top: 15px;
+    padding: 12px;
+    background: linear-gradient(135deg, #00ffea, #ff00ff);
+    color: #000;
     text-decoration: none;
-    border-radius: 4px;
-    transition: background 0.3s;
+    border-radius: 6px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: background 0.3s, box-shadow 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 255, 234, 0.6);
 }
 
 #downloadLink:hover {
-    background: #218838;
+    background: linear-gradient(135deg, #ff00ff, #00ffea);
+    box-shadow: 0 6px 16px rgba(255, 0, 255, 0.5);
 }
 
+/* Hidden Elements */
 .hidden {
     display: none;
+}
+
+/* Responsive Tweaks */
+@media (max-width: 600px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .card, .preview-card {
+        max-width: 100%;
+    }
 }
