@@ -1,11 +1,12 @@
-const { getRandomPaletteColor } = require('../utils');
+const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../utils');
 
 function drawKochSnowflake(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    function drawKochCurve(x1, y1, x2, y2, depth) {
+    function drawKochCurve(x1, y1, x2, y2, depth, color) {
         if (depth === 0) {
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color; // Use gradient color for this line
             ctx.stroke();
             return;
         }
@@ -23,20 +24,24 @@ function drawKochSnowflake(ctx, width, height, shapes, shapeTypes, colorPalette)
         const xPeak = xA + Math.cos(angle) * (xB - xA) - Math.sin(angle) * (yB - yA);
         const yPeak = yA + Math.sin(angle) * (xB - xA) + Math.cos(angle) * (yB - yA);
 
-        drawKochCurve(x1, y1, xA, yA, depth - 1);
-        drawKochCurve(xA, yA, xPeak, yPeak, depth - 1);
-        drawKochCurve(xPeak, yPeak, xB, yB, depth - 1);
-        drawKochCurve(xB, yB, x2, y2, depth - 1);
+        drawKochCurve(x1, y1, xA, yA, depth - 1, color);
+        drawKochCurve(xA, yA, xPeak, yPeak, depth - 1, color);
+        drawKochCurve(xPeak, yPeak, xB, yB, depth - 1, color);
+        drawKochCurve(xB, yB, x2, y2, depth - 1, color);
     }
 
     // Set background color
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, width, height);
 
-    const depth = 4; // Adjust recursion depth as needed
+    // Add randomness to size, depth, line thickness, and rotation
+    const depth = getRandomInt(3, 6); // Random recursion depth between 3 and 6
+    const randomRotation = getRandomInt(0, 360); // Random rotation angle in degrees
+    const randomLineWidth = getRandomInt(1, 5); // Random line width between 1 and 5
+    const randomSizeFactor = Math.random() * 0.2 + 0.5; // Randomize size factor between 0.5 and 0.7
 
-    // Define the initial equilateral triangle
-    const size = Math.min(width, height) * 0.6;
+    // Define the initial equilateral triangle with random size
+    const size = Math.min(width, height) * randomSizeFactor;
     const xCenter = width / 2;
     const yCenter = height / 2;
     const heightOffset = (Math.sqrt(3) / 2) * size;
@@ -50,14 +55,43 @@ function drawKochSnowflake(ctx, width, height, shapes, shapeTypes, colorPalette)
     const x3 = xCenter;
     const y3 = yCenter - (2 * heightOffset) / 3;
 
-    // Set line properties
-    ctx.strokeStyle = getRandomPaletteColor(colorPalette);
-    ctx.lineWidth = 1;
+    // Randomize line properties
+    ctx.lineWidth = randomLineWidth;
 
-    // Draw the three sides of the Koch Snowflake
-    drawKochCurve(x1, y1, x2, y2, depth);
-    drawKochCurve(x2, y2, x3, y3, depth);
-    drawKochCurve(x3, y3, x1, y1, depth);
+    // Randomize whether the lines are solid or dashed
+    if (Math.random() > 0.5) {
+        const dashLength = getRandomInt(5, 15);
+        ctx.setLineDash([dashLength, dashLength]);
+    } else {
+        ctx.setLineDash([]); // Solid line
+    }
+
+    // Apply random rotation to the entire canvas
+    ctx.save();
+    ctx.translate(xCenter, yCenter); // Move to center
+    ctx.rotate((randomRotation * Math.PI) / 180); // Rotate by random degrees
+    ctx.translate(-xCenter, -yCenter); // Move back to original position
+
+    // Generate random gradient colors for each side of the snowflake
+    const gradient1 = ctx.createLinearGradient(x1, y1, x2, y2);
+    gradient1.addColorStop(0, getRandomPaletteColor(colorPalette));
+    gradient1.addColorStop(1, getRandomPaletteColor(colorPalette));
+
+    const gradient2 = ctx.createLinearGradient(x2, y2, x3, y3);
+    gradient2.addColorStop(0, getRandomPaletteColor(colorPalette));
+    gradient2.addColorStop(1, getRandomPaletteColor(colorPalette));
+
+    const gradient3 = ctx.createLinearGradient(x3, y3, x1, y1);
+    gradient3.addColorStop(0, getRandomPaletteColor(colorPalette));
+    gradient3.addColorStop(1, getRandomPaletteColor(colorPalette));
+
+    // Draw the three sides of the Koch Snowflake with randomness
+    drawKochCurve(x1, y1, x2, y2, getRandomInt(3, 6), gradient1); // Random depth for each side
+    drawKochCurve(x2, y2, x3, y3, getRandomInt(3, 6), gradient2);
+    drawKochCurve(x3, y3, x1, y1, getRandomInt(3, 6), gradient3);
+
+    // Restore canvas to prevent affecting future drawings
+    ctx.restore();
 }
 
 module.exports = drawKochSnowflake;

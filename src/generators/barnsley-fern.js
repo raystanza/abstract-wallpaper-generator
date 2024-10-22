@@ -1,17 +1,17 @@
-// src/generators/barnsley_fern.js
-const { getRandomPaletteColor } = require('../utils');
+const { getRandomPaletteColor, getRandomInt } = require('../utils');
 
 function drawBarnsleyFern(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    // Set up scaling
-    const scaleX = width / 6;
-    const scaleY = -height / 10; // Negative because canvas y-axis is downwards
-    const offsetX = width / 2;
-    const offsetY = height;
+    // Add randomness to scaling and offsets
+    const scaleX = (width / 6) * (Math.random() * 0.2 + 0.9); // Random scale factor for X
+    const scaleY = -(height / 10) * (Math.random() * 0.2 + 0.9); // Random scale factor for Y
+    const offsetX = width / 2 + getRandomInt(-50, 50); // Random horizontal offset
+    const offsetY = height + getRandomInt(-50, 50); // Random vertical offset
 
     let x = 0;
     let y = 0;
 
-    const iterations = 100000; // Adjust as needed
+    // Randomize the number of iterations slightly for each drawing
+    const iterations = getRandomInt(80000, 120000); // Random iteration count between 80k and 120k
 
     for (let i = 0; i < iterations; i++) {
         let nextX, nextY;
@@ -36,9 +36,12 @@ function drawBarnsleyFern(ctx, width, height, shapes, shapeTypes, colorPalette) 
         const px = x * scaleX + offsetX;
         const py = y * scaleY + offsetY;
 
-        // Draw a point
+        // Randomize point size
+        const pointSize = Math.random() * 1.5 + 0.5; // Random size between 0.5 and 2
+
+        // Draw a point with random color and size
         ctx.fillStyle = getRandomPaletteColor(colorPalette);
-        ctx.fillRect(px, py, 1, 1);
+        ctx.fillRect(px, py, pointSize, pointSize);
     }
 }
 
