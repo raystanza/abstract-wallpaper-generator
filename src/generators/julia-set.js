@@ -1,8 +1,31 @@
-const { getRandomPaletteColor } = require('../utils');
+const { getRandomPaletteColor, getPaletteColors } = require('../utils');
+
+// Helper function to convert hex color to RGB
+function hexToRgb(hex) {
+    hex = hex.replace(/^#/, '');
+
+    let r, g, b;
+
+    if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+    } else {
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+    }
+
+    return { r, g, b };
+}
 
 function drawJuliaSet(ctx, width, height, shapes, shapeTypes, colorPalette) {
     const imageData = ctx.createImageData(width, height);
     const maxIterations = 100;
+
+    // Get the palette colors or fall back to default
+    const paletteColors = getPaletteColors(colorPalette) || getPaletteColors('mixed');
+    const baseColor = hexToRgb(paletteColors[0]); // Base color for inside the set
 
     // Define the viewport in the complex plane
     const xmin = -1.5;
@@ -10,13 +33,12 @@ function drawJuliaSet(ctx, width, height, shapes, shapeTypes, colorPalette) {
     const ymin = -1;
     const ymax = 1;
 
-    // Julia constant c (you can allow user to input these values)
-    const cRe = -0.7;
-    const cIm = 0.27015;
+    // Randomize Julia constant c for different outputs
+    const cRe = -0.7 + Math.random() * 1.4 - 0.7;
+    const cIm = 0.27015 + Math.random() * 0.5 - 0.25;
 
     for (let px = 0; px < width; px++) {
         for (let py = 0; py < height; py++) {
-            // Map pixel to complex plane
             let x = xmin + (xmax - xmin) * px / width;
             let y = ymin + (ymax - ymin) * py / height;
 
@@ -29,53 +51,25 @@ function drawJuliaSet(ctx, width, height, shapes, shapeTypes, colorPalette) {
                 iteration++;
             }
 
-            // Set pixel color based on iteration count
             const index = (py * width + px) * 4;
             if (iteration === maxIterations) {
-                // Inside the Julia set: color it black
-                imageData.data[index] = 0;
-                imageData.data[index + 1] = 0;
-                imageData.data[index + 2] = 0;
+                // Inside the Julia set: use a fixed base color from the palette
+                imageData.data[index] = baseColor.r;
+                imageData.data[index + 1] = baseColor.g;
+                imageData.data[index + 2] = baseColor.b;
                 imageData.data[index + 3] = 255;
             } else {
-                // Outside the Julia set: color it based on iteration
-                const hue = (iteration / maxIterations) * 360;
-                const [r, g, b] = hslToRgb(hue / 360, 1, 0.5);
-                imageData.data[index] = r;
-                imageData.data[index + 1] = g;
-                imageData.data[index + 2] = b;
+                // Outside the Julia set: get a color from the palette based on iteration
+                const color = hexToRgb(getRandomPaletteColor(colorPalette));
+                imageData.data[index] = color.r;
+                imageData.data[index + 1] = color.g;
+                imageData.data[index + 2] = color.b;
                 imageData.data[index + 3] = 255;
             }
         }
     }
 
     ctx.putImageData(imageData, 0, 0);
-}
-
-function hslToRgb(h, s, l) {
-    let r, g, b;
-
-    if (s === 0) {
-        r = g = b = l; // Achromatic
-    } else {
-        function hue2rgb(p, q, t) {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1 / 6) return p + (q - p) * 6 * t;
-            if (t < 1 / 2) return q;
-            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-        }
-
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-
-        r = hue2rgb(p, q, h + 1 / 3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1 / 3);
-    }
-
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
 module.exports = drawJuliaSet;
