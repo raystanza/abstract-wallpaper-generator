@@ -1,3 +1,86 @@
-/output
-/node_modules
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.pid.lock
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Dependency directories
+node_modules/
+jspm_packages/
+bower_components/
+
+# Build output
+dist/
+build/
+output/
+*.tgz
+
+# NPM install state
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment variables
+.env
+.env.test
+.env.production
+.env.local
+
+# Local development files
+public/temp/
+public/cache/
+coverage/
+cache/
+*.tmp
+*.swp
+
+# Optional OS files
+*.log
+*.swp
+*.swo
+*.swn
+*.smt
+*.swp
+*.swo
+*.tmp
+
+# Temporary files
+*.tmp
+*.temp
+*.backup
+
+# Backup files
+*.bak
+*.old
+*.orig
+*.save
+*.sublime-project
+
+# Ignore output files
+output/
+wallpaper_*.png
+
+# Node process specific files
+pids/
+*.pid
+*.pid.lock
+nodemon.json
