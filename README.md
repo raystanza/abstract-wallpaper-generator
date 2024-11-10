@@ -13,7 +13,7 @@ Generate high-quality 1920x1080 abstract wallpapers using Node.js and the canvas
 1. Clone the repository or create a new directory:
 
    ```sh
-   git clone https://github.com/your-username/abstract-wallpaper-generator.git
+   git clone https://github.com/raystanza/abstract-wallpaper-generator.git
    cd abstract-wallpaper-generator
    ```
 
