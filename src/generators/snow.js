@@ -1,55 +1,62 @@
-const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../utils');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
+const { colorAtCss } = require('../generation/color');
 
-function drawSnowflake(ctx, x, y, size, color) {
+function drawSnowflake(ctx, x, y, size, color, rng) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rng() * Math.PI * 2);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, size * 0.035);
 
-    // Draw a hexagon
-    ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-        ctx.lineTo(
-            x + size * Math.cos((i * Math.PI) / 3),
-            y + size * Math.sin((i * Math.PI) / 3)
-        );
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    // Draw lines within the hexagon to mimic snowflake patterns
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3;
-        const xEnd = x + size * Math.cos(angle);
-        const yEnd = y + size * Math.sin(angle);
+        const angle = (Math.PI * 2 * i) / 6;
+        const xEnd = Math.cos(angle) * size;
+        const yEnd = Math.sin(angle) * size;
 
         ctx.beginPath();
-        ctx.moveTo(x, y);
+        ctx.moveTo(0, 0);
         ctx.lineTo(xEnd, yEnd);
         ctx.stroke();
 
-        // Draw smaller branches
-        const branchSize = size * 0.5;
-        const branchAngle1 = angle + Math.PI / 6;
-        const branchAngle2 = angle - Math.PI / 6;
-        ctx.beginPath();
-        ctx.moveTo(xEnd, yEnd);
-        ctx.lineTo(xEnd + branchSize * Math.cos(branchAngle1), yEnd + branchSize * Math.sin(branchAngle1));
-        ctx.moveTo(xEnd, yEnd);
-        ctx.lineTo(xEnd + branchSize * Math.cos(branchAngle2), yEnd + branchSize * Math.sin(branchAngle2));
-        ctx.stroke();
+        for (const direction of [-1, 1]) {
+            const branchAngle = angle + direction * Math.PI * 0.24;
+            const branchLength = size * 0.36;
+            const branchStartX = xEnd * 0.58;
+            const branchStartY = yEnd * 0.58;
+            ctx.beginPath();
+            ctx.moveTo(branchStartX, branchStartY);
+            ctx.lineTo(
+                branchStartX + Math.cos(branchAngle) * branchLength,
+                branchStartY + Math.sin(branchAngle) * branchLength
+            );
+            ctx.stroke();
+        }
     }
+
+    ctx.restore();
 }
 
-function drawSnow(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    ctx.clearRect(0, 0, width, height);
+function drawSnow(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const count = Math.min(Math.max(shapes, 16), 360);
+    const minDimension = Math.min(width, height);
 
-    for (let i = 0; i < shapes; i++) {
-        const x = getRandomPosition(width);
-        const y = getRandomPosition(height);
-        const size = getRandomInt(10, 30);
-        const color = getRandomPaletteColor(colorPalette);
+    fillLinearGradient(ctx, width, height, colorPalette, 'vertical');
 
-        drawSnowflake(ctx, x, y, size, color);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < count; i++) {
+        const x = rng() * width;
+        const y = rng() * height;
+        const size = minDimension * (0.008 + rng() * 0.035);
+        drawSnowflake(ctx, x, y, size, colorAtCss(colorPalette, i / count, 0.42 + rng() * 0.45), rng);
     }
+
+    ctx.restore();
+    drawVignette(ctx, width, height, 0.22);
 }
 
 module.exports = drawSnow;
+

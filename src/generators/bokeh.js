@@ -1,43 +1,37 @@
-const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../utils');
 const { createCanvas, loadImage } = require('canvas');
 const sharp = require('sharp');
+const { adjustHex, hexToRgb, rgbToCss, samplePalette } = require('../generation/color');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
 
-async function drawBokeh(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    // Draw a background gradient
-    const bgGradient = ctx.createLinearGradient(0, 0, width, height);
-    bgGradient.addColorStop(0, '#111');
-    bgGradient.addColorStop(1, '#333');
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, width, height);
+async function drawBokeh(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const minDimension = Math.min(width, height);
+    const baseCount = Math.min(Math.max(shapes, 18), 240);
 
-    // Define layers for depth effect
+    fillLinearGradient(ctx, width, height, colorPalette, 'diagonal');
+
     const layers = [
-        { count: Math.floor(shapes * 0.3), blur: 20, minRadius: 80, maxRadius: 150 },
-        { count: Math.floor(shapes * 0.5), blur: 10, minRadius: 40, maxRadius: 80 },
-        { count: Math.floor(shapes * 0.2), blur: 5, minRadius: 10, maxRadius: 40 },
+        { count: Math.round(baseCount * 0.22), blur: 18, minRadius: 0.08, maxRadius: 0.16, alpha: 0.2 },
+        { count: Math.round(baseCount * 0.38), blur: 10, minRadius: 0.04, maxRadius: 0.1, alpha: 0.24 },
+        { count: Math.round(baseCount * 0.4), blur: 4, minRadius: 0.015, maxRadius: 0.055, alpha: 0.32 },
     ];
 
     for (const layer of layers) {
-        // Create a new canvas for each layer
         const layerCanvas = createCanvas(width, height);
         const layerCtx = layerCanvas.getContext('2d');
 
         for (let i = 0; i < layer.count; i++) {
-            const x = getRandomPosition(width);
-            const y = getRandomPosition(height);
-            const radius = getRandomInt(layer.minRadius, layer.maxRadius);
-            const alpha = Math.random() * 0.4 + 0.1; // Adjust transparency
+            const x = rng() * width;
+            const y = rng() * height;
+            const radius = minDimension * (layer.minRadius + rng() * (layer.maxRadius - layer.minRadius));
+            const baseColor = adjustHex(samplePalette(colorPalette, rng), 0.12);
+            const rgb = hexToRgb(baseColor);
+            const alpha = layer.alpha * (0.5 + rng() * 0.8);
 
-            // Slightly vary the color for a natural effect
-            const baseColor = getRandomPaletteColor(colorPalette);
-            const adjustedColor = adjustColor(baseColor, 0.1);
-
-            // Create radial gradient
             const gradient = layerCtx.createRadialGradient(x, y, 0, x, y, radius);
-            const rgbColor = hexToRgb(adjustedColor);
-
-            gradient.addColorStop(0, `rgba(${rgbColor}, ${alpha})`);
-            gradient.addColorStop(1, `rgba(${rgbColor}, 0)`);
+            gradient.addColorStop(0, rgbToCss(rgb, alpha));
+            gradient.addColorStop(0.62, rgbToCss(rgb, alpha * 0.38));
+            gradient.addColorStop(1, rgbToCss(rgb, 0));
 
             layerCtx.beginPath();
             layerCtx.arc(x, y, radius, 0, Math.PI * 2);
@@ -45,59 +39,13 @@ async function drawBokeh(ctx, width, height, shapes, shapeTypes, colorPalette) {
             layerCtx.fill();
         }
 
-        // Convert layer to buffer
-        const layerBuffer = layerCanvas.toBuffer('image/png');
-
-        // Apply blur to the layer using Sharp
-        const blurredLayerBuffer = await sharp(layerBuffer)
-            .blur(layer.blur)
-            .toBuffer();
-
-        // Load the blurred layer image
+        const blurredLayerBuffer = await sharp(layerCanvas.toBuffer('image/png')).blur(layer.blur).toBuffer();
         const blurredLayerImage = await loadImage(blurredLayerBuffer);
-
-        // Draw the blurred layer onto the main canvas
         ctx.drawImage(blurredLayerImage, 0, 0, width, height);
     }
-}
 
-// Helper function to convert hex color to RGB
-function hexToRgb(hex) {
-    // Remove '#' if present
-    hex = hex.replace(/^#/, '');
-
-    let r, g, b;
-
-    if (hex.length === 3) {
-        // 3-digit hex
-        r = parseInt(hex[0] + hex[0], 16);
-        g = parseInt(hex[1] + hex[1], 16);
-        b = parseInt(hex[2] + hex[2], 16);
-    } else {
-        // 6-digit hex
-        r = parseInt(hex.substring(0, 2), 16);
-        g = parseInt(hex.substring(2, 4), 16);
-        b = parseInt(hex.substring(4, 6), 16);
-    }
-
-    return `${r}, ${g}, ${b}`;
-}
-
-// Helper function to adjust color brightness
-function adjustColor(hex, amount) {
-    const usePound = hex[0] === '#';
-    hex = hex.replace(/^#/, '');
-
-    let num = parseInt(hex, 16);
-    let r = (num >> 16) + Math.round(amount * 255);
-    let g = ((num >> 8) & 0x00FF) + Math.round(amount * 255);
-    let b = (num & 0x0000FF) + Math.round(amount * 255);
-
-    r = Math.min(255, Math.max(0, r));
-    g = Math.min(255, Math.max(0, g));
-    b = Math.min(255, Math.max(0, b));
-
-    return (usePound ? '#' : '') + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    drawVignette(ctx, width, height, 0.25);
 }
 
 module.exports = drawBokeh;
+

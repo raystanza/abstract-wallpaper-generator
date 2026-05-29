@@ -1,21 +1,34 @@
-const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../utils');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
+const { colorAtCss } = require('../generation/color');
 
-function drawIce(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    for (let i = 0; i < shapes; i++) {
-        const x = getRandomPosition(width);
-        const y = getRandomPosition(height);
-        const length = getRandomInt(20, 100);
-        const angle = Math.random() * Math.PI * 2;
+function drawIce(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const shardCount = Math.min(Math.max(shapes * 2, 60), 1200);
+    const diagonal = Math.hypot(width, height);
+
+    fillLinearGradient(ctx, width, height, colorPalette, 'diagonal');
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < shardCount; i++) {
+        const x = rng() * width;
+        const y = rng() * height;
+        const length = diagonal * (0.015 + rng() * 0.08);
+        const angle = -Math.PI / 4 + rng() * Math.PI * 1.5;
+        const t = i / shardCount;
 
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(x + length * Math.cos(angle), y + length * Math.sin(angle));
-        ctx.strokeStyle = getRandomPaletteColor(['#00FFFF', '#E0FFFF', '#AFEEEE']);
-        ctx.lineWidth = getRandomInt(1, 4);
-        ctx.globalAlpha = Math.random() * 0.5 + 0.5;
+        ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+        ctx.strokeStyle = colorAtCss(colorPalette, t, 0.22 + rng() * 0.4);
+        ctx.lineWidth = 0.8 + rng() * 2.6;
         ctx.stroke();
-        ctx.globalAlpha = 1.0;
     }
+
+    ctx.restore();
+    drawVignette(ctx, width, height, 0.3);
 }
 
 module.exports = drawIce;
+

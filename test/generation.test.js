@@ -71,3 +71,31 @@ test('renderWallpaper writes png output for representative generators', async ()
     }
 });
 
+test('renderWallpaper produces stable output for the same seed', async () => {
+    const outputDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'awg-seeded-'));
+
+    try {
+        const sharedInput = {
+            width: 220,
+            height: 140,
+            shapes: 12,
+            shapeTypes: ['circle', 'rectangle', 'triangle'],
+            colorPalette: 'galaxy',
+            generationType: 'shapes',
+            seed: 'stable-seed',
+        };
+
+        const first = await renderWallpaper({
+            ...sharedInput,
+            outputFile: path.join(outputDirectory, 'first.png'),
+        });
+        const second = await renderWallpaper({
+            ...sharedInput,
+            outputFile: path.join(outputDirectory, 'second.png'),
+        });
+
+        assert.deepEqual(first.buffer, second.buffer);
+    } finally {
+        fs.rmSync(outputDirectory, { recursive: true, force: true });
+    }
+});

@@ -1,84 +1,46 @@
-const { getRandomPaletteColor, getRandomInt, getRandomPosition, getPaletteColors } = require('../utils');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
+const { colorAtCss, hexToRgb, rgbToCss, samplePalette } = require('../generation/color');
 
-function drawBubbles(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    // Get the palette colors
-    const paletteColors = getPaletteColors(colorPalette) || getPaletteColors('mixed');
+function drawBubbles(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const count = Math.min(Math.max(shapes, 8), 360);
+    const minDimension = Math.min(width, height);
 
-    // Use two colors from the palette for the background gradient
-    const bgColor1 = paletteColors[0];
-    const bgColor2 = paletteColors[1 % paletteColors.length]; // Ensures we have at least two colors
+    fillLinearGradient(ctx, width, height, colorPalette, 'vertical');
 
-    // Draw background gradient
-    const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, bgColor1);
-    bgGradient.addColorStop(1, bgColor2);
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, width, height);
+    for (let i = 0; i < count; i++) {
+        const x = rng() * width;
+        const y = rng() * height;
+        const radius = minDimension * (0.012 + rng() * 0.08);
+        const baseRgb = hexToRgb(samplePalette(colorPalette, rng));
+        const alpha = 0.18 + rng() * 0.26;
 
-    for (let i = 0; i < shapes; i++) {
-        const x = getRandomPosition(width);
-        const y = getRandomPosition(height);
-        const radius = getRandomInt(20, 100);
-
-        // Get a random color from the palette for the bubble
-        const bubbleBaseColor = getRandomPaletteColor(colorPalette);
-        const baseRgb = hexToRgb(bubbleBaseColor);
-
-        // Create bubble gradient using the palette color
-        const bubbleGradient = ctx.createRadialGradient(
-            x - radius / 3,
-            y - radius / 3,
-            radius / 10,
+        const gradient = ctx.createRadialGradient(
+            x - radius * 0.35,
+            y - radius * 0.35,
+            radius * 0.08,
             x,
             y,
             radius
         );
-        bubbleGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)'); // Highlight
-        bubbleGradient.addColorStop(0.5, `rgba(${baseRgb.r}, ${baseRgb.g}, ${baseRgb.b}, 0.3)`);
-        bubbleGradient.addColorStop(1, `rgba(${baseRgb.r}, ${baseRgb.g}, ${baseRgb.b}, 0)`);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.78)');
+        gradient.addColorStop(0.42, rgbToCss(baseRgb, alpha));
+        gradient.addColorStop(1, rgbToCss(baseRgb, 0));
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = bubbleGradient;
+        ctx.fillStyle = gradient;
         ctx.fill();
-
-        // Draw bubble outline
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.stroke();
-
-        // Add a highlight to simulate light reflection
-        const highlightX = x - radius / 3;
-        const highlightY = y - radius / 3;
-        const highlightRadius = radius / 5;
 
         ctx.beginPath();
-        ctx.arc(highlightX, highlightY, highlightRadius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fill();
-    }
-}
-
-// Helper function to convert hex color to RGB
-function hexToRgb(hex) {
-    // Remove '#' if present
-    hex = hex.replace(/^#/, '');
-
-    let r, g, b;
-
-    if (hex.length === 3) {
-        // 3-digit hex
-        r = parseInt(hex[0] + hex[0], 16);
-        g = parseInt(hex[1] + hex[1], 16);
-        b = parseInt(hex[2] + hex[2], 16);
-    } else {
-        // 6-digit hex
-        r = parseInt(hex.substring(0, 2), 16);
-        g = parseInt(hex.substring(2, 4), 16);
-        b = parseInt(hex.substring(4, 6), 16);
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = colorAtCss(colorPalette, i / count, 0.28);
+        ctx.lineWidth = Math.max(1, radius * 0.025);
+        ctx.stroke();
     }
 
-    return { r, g, b };
+    drawVignette(ctx, width, height, 0.28);
 }
 
 module.exports = drawBubbles;
+

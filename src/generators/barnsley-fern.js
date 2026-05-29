@@ -1,21 +1,26 @@
-const { getRandomPaletteColor, getRandomInt } = require('../utils');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
+const { colorAtCss } = require('../generation/color');
 
-function drawBarnsleyFern(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    // Add randomness to scaling and offsets
-    const scaleX = (width / 6) * (Math.random() * 0.2 + 0.9); // Random scale factor for X
-    const scaleY = -(height / 10) * (Math.random() * 0.2 + 0.9); // Random scale factor for Y
-    const offsetX = width / 2 + getRandomInt(-50, 50); // Random horizontal offset
-    const offsetY = height + getRandomInt(-50, 50); // Random vertical offset
-
+function drawBarnsleyFern(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const iterations = Math.min(180000, Math.max(45000, shapes * 1700));
+    const scaleX = width / 8.8;
+    const scaleY = -height / 11.2;
+    const offsetX = width * (0.5 + (rng() - 0.5) * 0.08);
+    const offsetY = height * 0.96;
     let x = 0;
     let y = 0;
 
-    // Randomize the number of iterations slightly for each drawing
-    const iterations = getRandomInt(80000, 120000); // Random iteration count between 80k and 120k
+    fillLinearGradient(ctx, width, height, colorPalette, 'vertical');
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
 
     for (let i = 0; i < iterations; i++) {
-        let nextX, nextY;
-        const r = Math.random();
+        const r = rng();
+        let nextX;
+        let nextY;
+
         if (r < 0.01) {
             nextX = 0;
             nextY = 0.16 * y;
@@ -29,20 +34,25 @@ function drawBarnsleyFern(ctx, width, height, shapes, shapeTypes, colorPalette) 
             nextX = -0.15 * x + 0.28 * y;
             nextY = 0.26 * x + 0.24 * y + 0.44;
         }
+
         x = nextX;
         y = nextY;
 
-        // Map to canvas coordinates
+        if (i < 20) {
+            continue;
+        }
+
         const px = x * scaleX + offsetX;
         const py = y * scaleY + offsetY;
+        const t = Math.max(0, Math.min(1, py / height));
 
-        // Randomize point size
-        const pointSize = Math.random() * 1.5 + 0.5; // Random size between 0.5 and 2
-
-        // Draw a point with random color and size
-        ctx.fillStyle = getRandomPaletteColor(colorPalette);
-        ctx.fillRect(px, py, pointSize, pointSize);
+        ctx.fillStyle = colorAtCss(colorPalette, 1 - t, 0.22);
+        ctx.fillRect(px, py, 0.85, 0.85);
     }
+
+    ctx.restore();
+    drawVignette(ctx, width, height, 0.2);
 }
 
 module.exports = drawBarnsleyFern;
+

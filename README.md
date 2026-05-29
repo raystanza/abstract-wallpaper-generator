@@ -91,20 +91,20 @@ abstract-wallpaper-generator
 
 The current app includes these generator modules:
 
-- `barnsley-fern` - fern-like fractal.
-- `bokeh` - blurred light circles with depth.
-- `bubbles` - layered bubble forms.
-- `fire` - noise-driven fire texture.
-- `fractal-tree` - recursive branching structure.
-- `ice` - crystalline line texture.
-- `julia-set` - Julia set fractal.
-- `koch-snowflake` - Koch snowflake fractal.
-- `mandelbrot-set` - Mandelbrot set fractal.
-- `shapes` - randomized geometric shape composition.
-- `sierpinski-triangle` - Sierpinski triangle fractal.
-- `snow` - snowflake pattern.
-- `water` - ripple pattern.
-- `waves` - sinusoidal wave lines.
+- `barnsley-fern` - dense iterated fern points over a subtle palette field.
+- `bokeh` - multi-depth blurred light circles with glow.
+- `bubbles` - translucent bubble fields with highlights and outlines.
+- `fire` - bounded noise-driven heat texture.
+- `fractal-tree` - recursive branching structure with palette depth.
+- `ice` - crystalline shard texture using the selected palette.
+- `julia-set` - bounded Julia fractal with smooth palette coloring.
+- `koch-snowflake` - framed recursive snowflake with palette strokes.
+- `mandelbrot-set` - bounded Mandelbrot detail region with smoother coloring.
+- `shapes` - composed geometric layers with controlled scale and opacity.
+- `sierpinski-triangle` - recursive triangular subdivision with palette depth.
+- `snow` - snowflake crystal field with seeded rotation.
+- `water` - concentric ripple fields over a palette-water backdrop.
+- `waves` - layered sinusoidal wave fields.
 
 Generator metadata and registration live in `src/generators/index.js`. The current frontend still posts to the legacy-compatible `/generate` route, and generator metadata is available at `/api/generators`.
 

@@ -1,4 +1,5 @@
 const { colorPalettes, getPaletteColors } = require('./generation/palettes');
+const { samplePalette } = require('./generation/color');
 
 // Utility functions
 function getRandomColor() {
@@ -19,8 +20,7 @@ function getRandomPosition(max) {
 }
 
 function getRandomPaletteColor(paletteName) {
-    const palette = Array.isArray(paletteName) ? paletteName : getPaletteColors(paletteName) || colorPalettes.mixed;
-    return palette[Math.floor(Math.random() * palette.length)];
+    return samplePalette(Array.isArray(paletteName) ? paletteName : getPaletteColors(paletteName) || colorPalettes.mixed);
 }
 
 // Improved Perlin noise implementation

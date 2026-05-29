@@ -1,42 +1,36 @@
-const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../utils');
+const { drawVignette, fillLinearGradient } = require('../generation/canvas');
+const { colorAtCss } = require('../generation/color');
 
-function drawWater(ctx, width, height, shapes, shapeTypes, colorPalette) {
-    // Clear the canvas with a background color (optional, adjust if needed)
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
+function drawWater(ctx, request) {
+    const { width, height, shapes, colorPalette, rng } = request;
+    const rippleSources = Math.min(Math.max(shapes, 12), 180);
 
-    // Create water ripple effect
-    for (let i = 0; i < shapes; i++) {
-        // Random center point for each ripple
-        const x = getRandomPosition(width);
-        const y = getRandomPosition(height);
+    fillLinearGradient(ctx, width, height, colorPalette, 'vertical');
 
-        // Random number of ripples for each droplet
-        const rippleCount = getRandomInt(2, 8); // Now ripple count varies from 2 to 8
-        const baseRadius = getRandomInt(10, 30); // Smaller base radius for more variation
-        const maxRadius = getRandomInt(40, 100); // Max radius for outermost ripple
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
 
-        // Color for the ripple
-        const strokeColor = getRandomPaletteColor(['#1E90FF', '#00BFFF', '#87CEFA', '#4682B4']);
+    for (let i = 0; i < rippleSources; i++) {
+        const x = rng() * width;
+        const y = rng() * height;
+        const rippleCount = 3 + Math.floor(rng() * 6);
+        const maxRadius = Math.min(width, height) * (0.035 + rng() * 0.09);
 
-        // Draw concentric circles with variable gaps and sizes
         for (let j = 0; j < rippleCount; j++) {
-            // Vary the radius more by calculating a random ripple size between the base and max radius
-            const currentRadius = baseRadius + (j * (maxRadius - baseRadius)) / rippleCount;
-            const alpha = 1 - j / rippleCount; // Fade effect as the ripples expand
-
-            // Vary line width and ripple gaps
-            const lineWidth = getRandomInt(1, 3); // Randomized line width for each ripple
+            const t = j / rippleCount;
+            const radius = maxRadius * (0.25 + t);
 
             ctx.beginPath();
-            ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = strokeColor;
-            ctx.globalAlpha = alpha; // Reduce opacity as the ripple grows
-            ctx.lineWidth = lineWidth;
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = colorAtCss(colorPalette, 0.25 + t * 0.6, (1 - t) * 0.42);
+            ctx.lineWidth = 1 + (1 - t) * 2;
             ctx.stroke();
-            ctx.globalAlpha = 1.0; // Reset opacity
         }
     }
+
+    ctx.restore();
+    drawVignette(ctx, width, height, 0.36);
 }
 
 module.exports = drawWater;
+
