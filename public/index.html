@@ -7,50 +7,54 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h1>Abstract Wallpaper Generator</h1>
-            <form id="wallpaperForm">
-                <div class="form-group">
-                    <label for="width">Width:</label>
-                    <input type="number" id="width" name="width" value="1920" required>
-                </div>
-                <div class="form-group">
-                    <label for="height">Height:</label>
-                    <input type="number" id="height" name="height" value="1080" required>
-                </div>
-                <div class="form-group">
-                    <label for="shapes">Number of Shapes:</label>
-                    <input type="number" id="shapes" name="shapes" value="50" required>
-                </div>
-                <div class="form-group">
-                    <label for="shapeTypes">Shape Types:</label>
-                    <select id="shapeTypes" name="shapeTypes" multiple required>
-                        <option value="circle" selected>Circle</option>
-                        <option value="rectangle" selected>Rectangle</option>
-                        <option value="triangle" selected>Triangle</option>
-                        <option value="hexagon" selected>Hexagon</option>
-                        <option value="rhombus" selected>Rhombus</option>
-                        <option value="star" selected>Star</option>
-                        <option value="spiral" selected>Spiral</option>
-                        <option value="ellipse" selected>Ellipse</option>
-                        <option value="pentagon" selected>Pentagon</option>
-                        <option value="heart" selected>Heart</option>
-                        <option value="diamond" selected>Diamond</option>
-                        <option value="cross" selected>Cross</option>
-                        <option value="arrow" selected>Arrow</option>
-                        <option value="parallelogram" selected>Parallelogram</option>
-                        <option value="trapezoid" selected>Trapezoid</option>
-                        <option value="wave" selected>Wave</option>
-                        <option value="zigzag" selected>Zigzag</option>
+    <main class="workspace" aria-labelledby="appTitle">
+        <aside class="control-panel" aria-label="Wallpaper controls">
+            <header class="brand-block">
+                <p class="eyebrow">Generative wallpaper studio</p>
+                <h1 id="appTitle">Abstract Wallpaper Generator</h1>
+            </header>
+
+            <form id="wallpaperForm" class="settings-form" novalidate>
+                <section class="control-section" aria-labelledby="generatorHeading">
+                    <div class="section-heading">
+                        <h2 id="generatorHeading">Generator</h2>
+                        <span id="generatorCategory" class="category-pill">Loading</span>
+                    </div>
+                    <label for="generationType">Algorithm</label>
+                    <select id="generationType" name="generationType" required></select>
+                    <p id="generatorDescription" class="field-note" aria-live="polite">Loading generators.</p>
+                </section>
+
+                <section class="control-section" aria-labelledby="canvasHeading">
+                    <h2 id="canvasHeading">Canvas</h2>
+                    <label for="resolutionPreset">Resolution preset</label>
+                    <select id="resolutionPreset">
+                        <option value="1920x1080" selected>1920 x 1080</option>
+                        <option value="2560x1440">2560 x 1440</option>
+                        <option value="3840x2160">3840 x 2160</option>
+                        <option value="1440x2560">1440 x 2560</option>
+                        <option value="custom">Custom</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label for="colorPalette">Color Palette:</label>
+
+                    <div class="dimension-grid">
+                        <div>
+                            <label for="width">Width</label>
+                            <input type="number" id="width" name="width" min="128" max="7680" value="1920" required>
+                        </div>
+                        <div>
+                            <label for="height">Height</label>
+                            <input type="number" id="height" name="height" min="128" max="4320" value="1080" required>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="control-section" aria-labelledby="styleHeading">
+                    <h2 id="styleHeading">Style</h2>
+                    <label for="colorPalette">Palette</label>
                     <select id="colorPalette" name="colorPalette" required>
+                        <option value="mixed" selected>Mixed</option>
                         <option value="warm">Warm</option>
                         <option value="cool">Cool</option>
-                        <option value="mixed">Mixed</option>
                         <option value="sunrise">Sunrise</option>
                         <option value="sunset">Sunset</option>
                         <option value="forest">Forest</option>
@@ -61,35 +65,80 @@
                         <option value="galaxy">Galaxy</option>
                         <option value="candy">Candy</option>
                     </select>
-                </div>                
-                <div class="form-group">
-                    <label for="generationType">Generation Type:</label>
-                    <select id="generationType" name="generationType" required>
-                        <option value="shapes" selected>Shapes</option>
-                        <option value="fractal-tree">Fractal Tree</option>
-                        <option value="koch-snowflake">Koch Snowflake</option>
-                        <option value="sierpinski-triangle">Sierpinski Triangle</option>
-                        <option value="mandelbrot-set">Mandelbrot Set</option>
-                        <option value="julia-set">Julia Set</option>
-                        <option value="barnsley-fern">Barnsley Fern</option>
-                        <option value="waves">Waves</option>
-                        <option value="bubbles">Bubbles</option>
-                        <option value="bokeh">Bokeh</option>
-                        <option value="water">Water</option>
-                        <option value="ice">Ice</option>
-                        <option value="fire">Fire</option>
-                        <option value="snow">Snow</option>
-                    </select>
-                </div>
-                <button type="submit">Generate Wallpaper</button>
+                    <div id="paletteSwatches" class="palette-swatches" aria-hidden="true"></div>
+
+                    <label for="shapes">Detail</label>
+                    <div class="range-row">
+                        <input type="range" id="densityRange" min="1" max="500" value="50">
+                        <input type="number" id="shapes" name="shapes" min="1" max="5000" value="50" required>
+                    </div>
+
+                    <div id="shapeTypeGroup" class="shape-type-group">
+                        <span class="label-text" id="shapeTypeLabel">Shape types</span>
+                        <div id="shapeTypeOptions" class="shape-grid" role="group" aria-labelledby="shapeTypeLabel"></div>
+                    </div>
+                </section>
+
+                <section class="control-section" aria-labelledby="seedHeading">
+                    <h2 id="seedHeading">Seed</h2>
+                    <label for="seed">Seed value</label>
+                    <div class="seed-row">
+                        <input type="text" id="seed" name="seed" maxlength="128" autocomplete="off">
+                        <button class="secondary-button" type="button" id="randomSeedButton">Random</button>
+                    </div>
+                </section>
+
+                <p id="formError" class="error-message" role="alert" aria-live="assertive"></p>
+
+                <button class="primary-button" type="submit" id="generateButton">
+                    <span id="generateButtonText">Generate</span>
+                    <span class="button-spinner" aria-hidden="true"></span>
+                </button>
             </form>
-        </div>
-        <div class="card preview-card">
-            <h2>Wallpaper Preview</h2>
-            <img id="preview" alt="Wallpaper Preview" class="hidden">
-            <a id="downloadLink" class="hidden" download="wallpaper.png">Download Wallpaper</a>
-        </div>
-    </div>
+        </aside>
+
+        <section class="preview-panel" aria-label="Wallpaper preview">
+            <div class="preview-header">
+                <div>
+                    <p class="eyebrow">Preview</p>
+                    <h2 id="previewTitle">Ready to generate</h2>
+                </div>
+                <a id="downloadLink" class="download-button is-disabled" download="wallpaper.png" aria-disabled="true">Download PNG</a>
+            </div>
+
+            <div class="preview-stage" id="previewStage">
+                <div id="emptyState" class="empty-state">
+                    <span class="empty-mark" aria-hidden="true"></span>
+                    <p>Choose a generator and create a wallpaper.</p>
+                </div>
+                <img id="preview" alt="Generated abstract wallpaper preview" hidden>
+            </div>
+
+            <dl class="status-grid" aria-label="Generation details">
+                <div>
+                    <dt>Generator</dt>
+                    <dd id="statusGenerator">None</dd>
+                </div>
+                <div>
+                    <dt>Resolution</dt>
+                    <dd id="statusResolution">1920 x 1080</dd>
+                </div>
+                <div>
+                    <dt>Palette</dt>
+                    <dd id="statusPalette">Mixed</dd>
+                </div>
+                <div>
+                    <dt>Seed</dt>
+                    <dd id="statusSeed">Auto</dd>
+                </div>
+                <div>
+                    <dt>Time</dt>
+                    <dd id="statusTime">Not generated</dd>
+                </div>
+            </dl>
+        </section>
+    </main>
+
     <script src="script.js"></script>
 </body>
 </html>

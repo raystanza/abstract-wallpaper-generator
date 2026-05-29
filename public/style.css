@@ -1,243 +1,491 @@
-/* Body Styling */
-body {
-    font-family: 'Roboto', sans-serif;
-    background: radial-gradient(circle at center, #000000, #000000);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    padding: 20px;
+:root {
+    color-scheme: light;
+    --page: #eef1f4;
+    --surface: #ffffff;
+    --surface-muted: #f6f8fa;
+    --text: #18202a;
+    --text-muted: #647080;
+    --line: #d8dee6;
+    --accent: #1967d2;
+    --accent-strong: #0b4faf;
+    --accent-soft: #dce9ff;
+    --success: #1f7a52;
+    --warning: #a8560b;
+    --danger: #b3261e;
+    --shadow: 0 18px 50px rgba(27, 39, 51, 0.12);
+    --radius: 8px;
+}
+
+* {
     box-sizing: border-box;
-    color: #fff;
-    text-shadow: 0 0 10px #00ffea; /* More pronounced text glow */
-    overflow: hidden;
-    position: relative;
 }
 
-/* CRT Effect - Highly Visible Scanlines */
-body::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-        rgba(255, 255, 255, 0.1) 0px,   /* Brighter lines */
-        rgba(255, 255, 255, 0.1) 2px,
-        transparent 2px,
-        transparent 5px   /* More spacing between lines */
-    );
-    opacity: 0.9; /* More visible scan lines */
-    z-index: 1;
+html {
+    min-width: 320px;
 }
 
-/* CRT Effect - Strong Glow and Vignette combined */
-body::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-        radial-gradient(circle, rgba(25, 25, 25, 0.35), transparent 35%), /* Stronger phosphor glow */
-        radial-gradient(circle, rgba(17, 17, 17, 0.6), transparent 70%); /* Stronger vignette effect */
-    z-index: 2;
-    pointer-events: none;
-    mix-blend-mode: screen; /* Enhance the glow blending */
+body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        linear-gradient(135deg, rgba(25, 103, 210, 0.08), transparent 38%),
+        linear-gradient(315deg, rgba(31, 122, 82, 0.1), transparent 34%),
+        var(--page);
+    color: var(--text);
+    font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
 }
 
-/* Container for Cards */
-.container {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
+button,
+input,
+select {
+    font: inherit;
+}
+
+button,
+select {
+    cursor: pointer;
+}
+
+button:disabled,
+.is-disabled {
+    cursor: not-allowed;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
     gap: 20px;
+    min-height: 100vh;
+    padding: 20px;
 }
 
-/* Card Styling (CRT Screen Curvature) */
-.card {
-    background: #1e1e1e;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s, box-shadow 0.3s;
-    max-width: 450px;
-    width: 100%;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    border: 2px solid #ff00ff;
-    transform: perspective(1000px) rotateX(1deg); /* Slight curvature */
+.control-panel,
+.preview-panel {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(216, 222, 230, 0.9);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
 }
 
-.card:hover {
-    transform: translateY(-10px) perspective(1000px) rotateX(2deg); /* More pronounced curvature on hover */
-    box-shadow: 0 12px 24px rgba(255, 0, 255, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+.control-panel {
+    align-self: start;
+    max-height: calc(100vh - 40px);
+    overflow: auto;
 }
 
-/* Enhancing Text Glow for Phosphor Effect */
-h1, h2 {
-    color: #ff00ff;
-    margin-bottom: 20px;
+.brand-block,
+.settings-form,
+.preview-panel {
+    padding: 22px;
+}
+
+.brand-block {
+    border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+    margin: 0 0 4px;
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0;
     text-transform: uppercase;
-    font-weight: bold;
-    text-shadow: 0 0 15px rgba(255, 0, 255, 0.9), 0 0 30px rgba(0, 255, 234, 0.8); /* Strong phosphor glow */
+}
+
+h1,
+h2,
+p {
+    overflow-wrap: anywhere;
 }
 
 h1 {
-    font-size: 2em;
+    margin: 0;
+    font-size: 1.65rem;
+    line-height: 1.15;
 }
 
 h2 {
-    font-size: 1.5em;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.2;
 }
 
-/* CRT Noise Effect */
-.crt-noise {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAGgwJ/lSUdbQAAAABJRU5ErkJggg==');
-    opacity: 0.1; /* Adjust opacity for stronger or weaker noise effect */
-    pointer-events: none;
-    z-index: 3;
+.settings-form {
+    display: grid;
+    gap: 18px;
 }
 
-/* Spinner Styling */
-.loading-spinner {
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-left-color: #fff;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    animation: spin 1s linear infinite;
-    display: inline-block;
-    margin-left: 8px;
+.control-section {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.section-heading,
+.preview-header,
+.seed-row,
+.range-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-/* Form Group Styling */
-.form-group {
-    margin-bottom: 20px;
-    text-align: left;
+.section-heading,
+.preview-header {
+    justify-content: space-between;
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    color: #00ffea;
-    font-weight: bold;
-    text-shadow: 0 0 5px #00ffea;
+.category-pill {
+    max-width: 160px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.74rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: capitalize;
 }
 
-input, select {
-    width: 90%;
-    padding: 12px;
-    border-radius: 6px;
-    border: 2px solid #ff00ff;
-    background-color: #121212;
-    color: #fff;
-    font-size: 1em;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
+label,
+.label-text {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 750;
 }
 
-input:focus, select:focus {
-    border-color: #00ffea;
-    box-shadow: 0 0 12px #00ffea, 0 0 8px #ff00ff;
-}
-
-/* Button Styling */
-button {
+input,
+select {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #ff00ff, #00ffea);
-    color: #000;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1.2em;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: background 0.3s, transform 0.3s;
-    box-shadow: 0 4px 12px rgba(255, 0, 255, 0.6);
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 9px 11px;
+    outline: none;
 }
 
-button:hover {
-    background: linear-gradient(135deg, #00ffea, #ff00ff);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 255, 234, 0.5);
+input:focus,
+select:focus,
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid rgba(25, 103, 210, 0.25);
+    outline-offset: 2px;
+    border-color: var(--accent);
 }
 
-button:disabled {
-    background: #444;
-    color: #888;
-    cursor: not-allowed;
-    box-shadow: none;
+.field-note {
+    min-height: 42px;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
 }
 
-/* Preview Card Styling */
-.preview-card {
-    max-width: 600px;
-    background: #1e1e1e;
-    border: 2px solid #00ffea;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 255, 234, 0.2);
+.dimension-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
 }
 
-#preview {
-    max-width: 100%;
-    margin-top: 10px;
-    border: 2px solid #ff00ff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(255, 0, 255, 0.3);
+.dimension-grid > div {
+    min-width: 0;
 }
 
-/* Download Link Styling */
-#downloadLink {
-    display: block;
-    margin-top: 15px;
-    padding: 12px;
-    background: linear-gradient(135deg, #00ffea, #ff00ff);
-    color: #000;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: background 0.3s, box-shadow 0.3s;
-    box-shadow: 0 4px 12px rgba(0, 255, 234, 0.6);
+.palette-swatches {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    min-height: 20px;
 }
 
-#downloadLink:hover {
-    background: linear-gradient(135deg, #ff00ff, #00ffea);
-    box-shadow: 0 6px 16px rgba(255, 0, 255, 0.5);
+.palette-swatches span {
+    min-width: 0;
+    height: 20px;
+    border-radius: 5px;
+    border: 1px solid rgba(24, 32, 42, 0.12);
 }
 
-/* Hidden Elements */
-.hidden {
+.range-row {
+    align-items: stretch;
+}
+
+.range-row input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+}
+
+.range-row input[type="number"] {
+    width: 92px;
+    flex: 0 0 92px;
+}
+
+.shape-type-group {
+    display: grid;
+    gap: 8px;
+}
+
+.shape-type-group[hidden] {
     display: none;
 }
 
-/* Responsive Tweaks */
-@media (max-width: 600px) {
-    .container {
-        flex-direction: column;
-        align-items: center;
+.shape-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.shape-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface-muted);
+    color: var(--text);
+    font-size: 0.84rem;
+}
+
+.shape-option input {
+    width: 16px;
+    min-height: 16px;
+    flex: 0 0 16px;
+}
+
+.shape-option span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.seed-row input {
+    min-width: 0;
+}
+
+.secondary-button,
+.primary-button,
+.download-button {
+    border: 0;
+    border-radius: 7px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.secondary-button {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 0 12px;
+    background: #e7edf4;
+    color: var(--text);
+}
+
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 46px;
+    width: 100%;
+    background: var(--accent);
+    color: white;
+}
+
+.primary-button:hover:not(:disabled),
+.download-button:hover:not(.is-disabled) {
+    background: var(--accent-strong);
+}
+
+.primary-button.is-loading .button-spinner {
+    display: block;
+}
+
+.button-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.error-message {
+    min-height: 20px;
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.preview-panel {
+    display: grid;
+    grid-template-rows: auto minmax(280px, 1fr) auto;
+    gap: 16px;
+    min-width: 0;
+    min-height: calc(100vh - 40px);
+}
+
+.preview-header {
+    padding: 0;
+}
+
+.preview-header h2 {
+    font-size: 1.35rem;
+}
+
+.download-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 14px;
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.download-button.is-disabled {
+    background: #d3dae3;
+    color: #6f7a87;
+    pointer-events: none;
+}
+
+.preview-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 300px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+        linear-gradient(45deg, rgba(24, 32, 42, 0.04) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(24, 32, 42, 0.04) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(24, 32, 42, 0.04) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(24, 32, 42, 0.04) 75%),
+        var(--surface-muted);
+    background-position:
+        0 0,
+        0 10px,
+        10px -10px,
+        -10px 0;
+    background-size: 20px 20px;
+}
+
+#preview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    max-width: 280px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.empty-mark {
+    width: 72px;
+    height: 48px;
+    border: 2px solid var(--line);
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent-soft), #eaf5ef);
+}
+
+.empty-state p {
+    margin: 0;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.status-grid div {
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface-muted);
+}
+
+.status-grid dt {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.status-grid dd {
+    margin: 4px 0 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 750;
+}
+
+@media (max-width: 980px) {
+    .workspace {
+        grid-template-columns: 1fr;
     }
 
-    .card, .preview-card {
-        max-width: 100%;
+    .control-panel {
+        max-height: none;
+    }
+
+    .preview-panel {
+        min-height: auto;
+    }
+
+    .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+    .workspace {
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .brand-block,
+    .settings-form,
+    .preview-panel {
+        padding: 16px;
+    }
+
+    .dimension-grid,
+    .shape-grid,
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .download-button {
+        width: 100%;
     }
 }
