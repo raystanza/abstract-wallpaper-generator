@@ -50,6 +50,7 @@ public/temp/
 public/cache/
 coverage/
 cache/
+dev/
 *.tmp
 *.swp
 
