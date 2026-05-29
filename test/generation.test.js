@@ -14,6 +14,11 @@ test('generator registry exposes metadata without render functions', () => {
 
     assert.ok(ids.includes('shapes'));
     assert.ok(ids.includes('waves'));
+    assert.ok(ids.includes('flow-field'));
+    assert.ok(ids.includes('voronoi-cells'));
+    assert.ok(ids.includes('topographic-contours'));
+    assert.ok(ids.includes('particle-orbits'));
+    assert.ok(ids.includes('circuit-board'));
     assert.equal(getGenerator('shapes').name, 'Shapes');
     assert.equal(Object.prototype.hasOwnProperty.call(metadata[0], 'render'), false);
 });
@@ -95,6 +100,31 @@ test('renderWallpaper produces stable output for the same seed', async () => {
         });
 
         assert.deepEqual(first.buffer, second.buffer);
+    } finally {
+        fs.rmSync(outputDirectory, { recursive: true, force: true });
+    }
+});
+
+test('new generators render png output through the shared pipeline', async () => {
+    const outputDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'awg-new-generators-'));
+    const cases = ['flow-field', 'voronoi-cells', 'topographic-contours', 'particle-orbits', 'circuit-board'];
+
+    try {
+        for (const generationType of cases) {
+            const outputFile = path.join(outputDirectory, `${generationType}.png`);
+            await renderWallpaper({
+                width: 240,
+                height: 150,
+                shapes: 18,
+                colorPalette: 'ocean',
+                generationType,
+                seed: `new-${generationType}`,
+                outputFile,
+            });
+
+            assert.equal(fs.existsSync(outputFile), true);
+            assert.ok(fs.statSync(outputFile).size > 100);
+        }
     } finally {
         fs.rmSync(outputDirectory, { recursive: true, force: true });
     }

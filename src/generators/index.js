@@ -2,16 +2,21 @@ const drawBarnsleyFern = require('./barnsley-fern');
 const drawBokeh = require('./bokeh');
 const drawBubbles = require('./bubbles');
 const drawFire = require('./fire');
+const drawFlowField = require('./flow-field');
 const drawFractalTree = require('./fractal-tree');
 const drawIce = require('./ice');
 const drawJuliaSet = require('./julia-set');
 const drawKochSnowflake = require('./koch-snowflake');
 const drawMandelbrotSet = require('./mandelbrot-set');
+const drawParticleOrbits = require('./particle-orbits');
 const drawShapes = require('./shapes');
 const drawSierpinskiTriangle = require('./sierpinski-triangle');
 const drawSnow = require('./snow');
+const drawTopographicContours = require('./topographic-contours');
+const drawVoronoiCells = require('./voronoi-cells');
 const drawWater = require('./water');
 const drawWaves = require('./waves');
+const drawCircuitBoard = require('./circuit-board');
 
 const sharedParameters = [
     {
@@ -159,6 +164,46 @@ const generators = {
         category: 'texture',
         parameters: [densityParameter, ...sharedParameters],
         render: drawWater,
+    },
+    'flow-field': {
+        id: 'flow-field',
+        name: 'Flow Field',
+        description: 'Coherent-noise vector field that advects thousands of short palette-colored strokes.',
+        category: 'algorithmic',
+        parameters: [densityParameter, ...sharedParameters],
+        render: drawFlowField,
+    },
+    'voronoi-cells': {
+        id: 'voronoi-cells',
+        name: 'Voronoi Cells',
+        description: 'Cellular nearest-site diagram with softened borders and seed-driven site placement.',
+        category: 'algorithmic',
+        parameters: [densityParameter, ...sharedParameters],
+        render: drawVoronoiCells,
+    },
+    'topographic-contours': {
+        id: 'topographic-contours',
+        name: 'Topographic Contours',
+        description: 'Noise-warped contour rings that resemble elevation maps and terrain isolines.',
+        category: 'algorithmic',
+        parameters: [densityParameter, ...sharedParameters],
+        render: drawTopographicContours,
+    },
+    'particle-orbits': {
+        id: 'particle-orbits',
+        name: 'Particle Orbits',
+        description: 'Particle trails integrated around seeded attractors for orbital motion studies.',
+        category: 'simulation',
+        parameters: [densityParameter, ...sharedParameters],
+        render: drawParticleOrbits,
+    },
+    'circuit-board': {
+        id: 'circuit-board',
+        name: 'Circuit Board',
+        description: 'Generative orthogonal traces and nodes inspired by printed circuit board routing.',
+        category: 'systems',
+        parameters: [densityParameter, ...sharedParameters],
+        render: drawCircuitBoard,
     },
 };
 

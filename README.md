@@ -95,16 +95,21 @@ The current app includes these generator modules:
 - `bokeh` - multi-depth blurred light circles with glow.
 - `bubbles` - translucent bubble fields with highlights and outlines.
 - `fire` - bounded noise-driven heat texture.
+- `flow-field` - coherent-noise vector field strokes.
 - `fractal-tree` - recursive branching structure with palette depth.
 - `ice` - crystalline shard texture using the selected palette.
 - `julia-set` - bounded Julia fractal with smooth palette coloring.
 - `koch-snowflake` - framed recursive snowflake with palette strokes.
 - `mandelbrot-set` - bounded Mandelbrot detail region with smoother coloring.
+- `particle-orbits` - simulated particles orbiting seeded attractors.
 - `shapes` - composed geometric layers with controlled scale and opacity.
 - `sierpinski-triangle` - recursive triangular subdivision with palette depth.
 - `snow` - snowflake crystal field with seeded rotation.
+- `topographic-contours` - noise-warped elevation contour rings.
+- `voronoi-cells` - cellular nearest-site diagram.
 - `water` - concentric ripple fields over a palette-water backdrop.
 - `waves` - layered sinusoidal wave fields.
+- `circuit-board` - orthogonal trace routing with nodes.
 
 Generator metadata and registration live in `src/generators/index.js`. The current frontend still posts to the legacy-compatible `/generate` route, and generator metadata is available at `/api/generators`.
 
