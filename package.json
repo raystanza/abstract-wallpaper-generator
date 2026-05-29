@@ -1,24 +1,32 @@
 {
   "name": "abstract-wallpaper-generator",
   "version": "1.0.0",
+  "description": "Node.js abstract wallpaper generator with a web preview interface.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon"
+    "dev": "nodemon index.js",
+    "lint": "node --check index.js && find src public -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "format": "prettier --write .",
+    "test": "node --test",
+    "verify": "pnpm run lint && pnpm test"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "canvas": "^2.11.2",
+    "canvas": "^3.2.3",
     "commander": "^12.1.0",
     "express": "^4.19.2",
     "sharp": "^0.33.5",
     "simplex-noise": "^4.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "prettier": "^3.5.3"
   },
   "packageManager": "pnpm@11.4.0+sha512.f0febc7e37552ab485494a914241b338e0b3580b93d54ce31f00933015880863129038a1b4ae4e414a0ee63ac35bf21197e990172c4a68256450b5636310968f"
 }
