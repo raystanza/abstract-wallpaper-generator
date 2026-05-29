@@ -79,9 +79,11 @@ abstract-wallpaper-generator
 │   ├── script.js
 │   └── style.css
 ├── src
-│   ├── generateWallpaper.js  # Current generation orchestration
-│   ├── generators            # Individual wallpaper generators
-│   └── utils.js              # Shared color/random helpers
+│   ├── generateWallpaper.js  # Backward-compatible generation entry point
+│   ├── generation            # Validation, output, palettes, and rendering core
+│   ├── generators            # Generator registry and individual generators
+│   ├── random.js             # Seeded random helpers
+│   └── utils.js              # Legacy shared helper functions
 └── dev                       # Modernization prompts and planning docs
 ```
 
@@ -104,7 +106,7 @@ The current app includes these generator modules:
 - `water` - ripple pattern.
 - `waves` - sinusoidal wave lines.
 
-Generator registration is currently manual in `index.js`. A planned modernization step will move generator metadata and registration into a central registry.
+Generator metadata and registration live in `src/generators/index.js`. The current frontend still posts to the legacy-compatible `/generate` route, and generator metadata is available at `/api/generators`.
 
 ## Notes
 

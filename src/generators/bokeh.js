@@ -2,7 +2,7 @@ const { getRandomPaletteColor, getRandomInt, getRandomPosition } = require('../u
 const { createCanvas, loadImage } = require('canvas');
 const sharp = require('sharp');
 
-async function drawBokeh(ctx, width, height, shapes, shapeTypes, colorPalette, outputFile) {
+async function drawBokeh(ctx, width, height, shapes, shapeTypes, colorPalette) {
     // Draw a background gradient
     const bgGradient = ctx.createLinearGradient(0, 0, width, height);
     bgGradient.addColorStop(0, '#111');
@@ -59,11 +59,6 @@ async function drawBokeh(ctx, width, height, shapes, shapeTypes, colorPalette, o
         // Draw the blurred layer onto the main canvas
         ctx.drawImage(blurredLayerImage, 0, 0, width, height);
     }
-
-    // Save the final image
-    const finalBuffer = ctx.canvas.toBuffer('image/png');
-    await sharp(finalBuffer).toFile(outputFile);
-    console.log('Wallpaper generated:', outputFile);
 }
 
 // Helper function to convert hex color to RGB

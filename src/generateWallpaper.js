@@ -1,42 +1,28 @@
-const { createCanvas } = require('canvas');
-const fs = require('fs');
-const { getRandomColor } = require('./utils');
+const { renderWallpaper } = require('./generation/renderWallpaper');
 
-const generators = {};
-
-function registerGenerator(name, generatorFunction) {
-    generators[name] = generatorFunction;
-}
-
-async function generateWallpaper(width, height, shapes, shapeTypes, colorPalette, generationType, outputFile) {
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    // Draw background
-    ctx.fillStyle = getRandomColor();
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw based on generation type
-    const generatorFunction = generators[generationType];
-
-    if (!generatorFunction) {
-        const errorMsg = `Unknown generation type: ${generationType}`;
-        console.error(errorMsg);
-        throw new Error(errorMsg);
+function normalizeGenerationArgs(args) {
+    if (args.length === 1 && typeof args[0] === 'object') {
+        return args[0];
     }
 
-    // Check if the generator function is asynchronous
-    const isAsync = generatorFunction.constructor.name === 'AsyncFunction';
+    const [width, height, shapes, shapeTypes, colorPalette, generationType, outputFile] = args;
 
-    if (isAsync) {
-        await generatorFunction(ctx, width, height, shapes, shapeTypes, colorPalette, outputFile);
-    } else {
-        generatorFunction(ctx, width, height, shapes, shapeTypes, colorPalette);
-        // Save the image
-        const buffer = canvas.toBuffer('image/png');
-        fs.writeFileSync(outputFile, buffer);
-        console.log('Wallpaper generated:', outputFile);
-    }
+    return {
+        width,
+        height,
+        shapes,
+        shapeTypes,
+        colorPalette,
+        generationType,
+        outputFile,
+    };
 }
 
-module.exports = { generateWallpaper, registerGenerator };
+async function generateWallpaper(...args) {
+    return renderWallpaper(normalizeGenerationArgs(args));
+}
+
+module.exports = {
+    generateWallpaper,
+    renderWallpaper,
+};

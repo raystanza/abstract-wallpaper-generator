@@ -1,61 +1,51 @@
 // index.js
 const express = require('express');
 const path = require('path');
-const { generateWallpaper, registerGenerator } = require('./src/generateWallpaper');
-
-// Import and register generators
-const drawShapes = require('./src/generators/shapes');
-const drawFractalTree = require('./src/generators/fractal-tree');
-const drawBarnsleyFern = require('./src/generators/barnsley-fern');
-const drawJuliaSet = require('./src/generators/julia-set');
-const drawKochSnowflake = require('./src/generators/koch-snowflake');
-const drawMandelbrotSet = require('./src/generators/mandelbrot-set');
-const drawSierpinskiTriangle = require('./src/generators/sierpinski-triangle');
-const drawWaves = require('./src/generators/waves');
-const drawBubbles = require('./src/generators/bubbles');
-const drawBokeh = require('./src/generators/bokeh');
-const drawFire = require('./src/generators/fire');
-const drawIce = require('./src/generators/ice');
-const drawSnow = require('./src/generators/snow');
-const drawWater = require('./src/generators/water');
-
-registerGenerator('shapes', drawShapes);
-registerGenerator('fractal-tree', drawFractalTree);
-registerGenerator('barnsley-fern', drawBarnsleyFern);
-registerGenerator('julia-set', drawJuliaSet);
-registerGenerator('koch-snowflake', drawKochSnowflake);
-registerGenerator('mandelbrot-set', drawMandelbrotSet);
-registerGenerator('sierpinski-triangle', drawSierpinskiTriangle);
-registerGenerator('waves', drawWaves);
-registerGenerator('bubbles', drawBubbles);
-registerGenerator('bokeh', drawBokeh);
-registerGenerator('fire', drawFire);
-registerGenerator('ice', drawIce);
-registerGenerator('snow', drawSnow);
-registerGenerator('water', drawWater);
+const { generateWallpaper } = require('./src/generateWallpaper');
+const { ValidationError } = require('./src/generation/validation');
+const { listGeneratorMetadata } = require('./src/generators');
 
 const app = express();
 const port = 3000;
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/api/generators', (req, res) => {
+    res.json({ generators: listGeneratorMetadata() });
+});
+
 app.post('/generate', async (req, res) => {
-    const width = parseInt(req.body.width, 10);
-    const height = parseInt(req.body.height, 10);
-    const shapes = parseInt(req.body.shapes, 10);
     const shapeTypes = Array.isArray(req.body.shapeTypes) ? req.body.shapeTypes : [req.body.shapeTypes];
-    const colorPalette = req.body.colorPalette;
-    const generationType = req.body.generationType;
 
     const outputFilename = `wallpaper_${Date.now()}.png`;
     const outputFile = path.join(__dirname, 'output', outputFilename);
 
     try {
-        await generateWallpaper(width, height, shapes, shapeTypes, colorPalette, generationType, outputFile);
-        res.sendFile(outputFile);
+        const result = await generateWallpaper({
+            width: req.body.width,
+            height: req.body.height,
+            shapes: req.body.shapes,
+            shapeTypes,
+            colorPalette: req.body.colorPalette,
+            generationType: req.body.generationType,
+            seed: req.body.seed,
+            outputFile,
+        });
+
+        res.sendFile(result.outputFile);
     } catch (error) {
         console.error('Error generating wallpaper:', error);
+
+        if (error instanceof ValidationError) {
+            res.status(400).json({
+                error: error.message,
+                details: error.details,
+            });
+            return;
+        }
+
         res.status(500).send('An error occurred while generating the wallpaper.');
     }
 });
