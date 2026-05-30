@@ -1,4 +1,3 @@
-// index.js
 const express = require("express");
 const path = require("path");
 const { generateWallpaper } = require("./src/generateWallpaper");
