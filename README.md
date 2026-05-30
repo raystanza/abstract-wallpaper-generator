@@ -62,9 +62,11 @@ The React app opens directly into the wallpaper studio foundation:
 
 1. Loads generator metadata from `GET /api/generators`.
 2. Shows the available generator selector and selected generator details.
-3. Displays API connection status and a preview workspace placeholder.
+3. Detects browser preview rendering capability.
+4. Displays a WebGL2 shader preview when available.
+5. Falls back to the existing server PNG generation path when WebGL2 is unavailable or disabled.
 
-The existing generation API still returns image bytes directly, so normal API preview usage does not leave generated files behind. Rich React controls and live preview orchestration will build on this foundation.
+The existing generation API still returns image bytes directly, so normal API preview usage does not leave generated files behind. Use `?renderer=server` on the Vite URL to force the server-rendered fallback path during development.
 
 ## API Usage
 

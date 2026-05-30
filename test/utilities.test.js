@@ -20,6 +20,11 @@ const {
   isPaletteName,
 } = require("../src/generation/palettes");
 const { createSeededRandom, withSeededMathRandom } = require("../src/random");
+const {
+  choosePreviewMode,
+  clampDevicePixelRatio,
+  summarizeRendererCapabilities,
+} = require("../src/shared/rendererCapabilities");
 
 test("palette utilities expose stable named palettes", () => {
   const names = getPaletteNames();
@@ -99,4 +104,58 @@ test("output filename helpers sanitize untrusted metadata", () => {
     }),
     "flow-field_1920x1080_seed-value_2026-05-29T01-02-03-456Z.png",
   );
+});
+
+test("renderer capability helpers clamp DPR and choose fallback mode", () => {
+  assert.equal(clampDevicePixelRatio(0), 1);
+  assert.equal(clampDevicePixelRatio(Number.NaN), 1);
+  assert.equal(clampDevicePixelRatio(1.5), 1.5);
+  assert.equal(clampDevicePixelRatio(4), 2);
+  assert.equal(
+    choosePreviewMode({
+      webgl2: {
+        available: true,
+      },
+    }),
+    "webgl2",
+  );
+  assert.equal(
+    choosePreviewMode(
+      {
+        webgl2: {
+          available: true,
+        },
+      },
+      "server-cpu",
+    ),
+    "server-cpu",
+  );
+  assert.equal(
+    choosePreviewMode({
+      webgl2: {
+        available: false,
+      },
+    }),
+    "server-cpu",
+  );
+});
+
+test("renderer capability helpers summarize diagnostics", () => {
+  const details = summarizeRendererCapabilities({
+    webgl2: {
+      available: false,
+      error: "context creation failed",
+      highpFragment: false,
+      maxTextureSize: 0,
+    },
+    webgpu: {
+      available: false,
+    },
+    offscreenCanvas: false,
+    devicePixelRatio: 3,
+    clampedDevicePixelRatio: 2,
+  });
+
+  assert.ok(details.some((detail) => detail.includes("WebGL2 unavailable")));
+  assert.ok(details.some((detail) => detail.includes("DPR 3 clamped to 2")));
 });

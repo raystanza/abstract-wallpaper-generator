@@ -35,6 +35,25 @@ The frontend uses typed API helpers in `src/web/lib/apiClient.ts`:
 - `generateWallpaper()`
 - `exportWallpaper()`, currently a placeholder until Prompt 10 defines distinct export semantics.
 
+## Preview Rendering
+
+The preview renderer foundation lives in `src/web/rendering/`.
+
+Key modules:
+
+- `capabilities.ts`: detects browser renderer support. It checks WebGL2 context creation, max texture size, high precision fragment support, device pixel ratio clamping, OffscreenCanvas support, and informational WebGPU availability.
+- `webglPreviewRenderer.ts`: owns the direct WebGL2 shader preview implementation. The first GPU preview is a deterministic abstract waves/noise shader driven by generation request inputs such as seed, palette, background, size, and density.
+- `index.ts`: exposes `detectRendererCapabilities()`, `createPreviewRenderer()`, `renderServerPreview()`, and renderer status helpers.
+- `src/shared/rendererCapabilities.js`: contains pure capability helpers used by both browser code and Node tests.
+
+Renderer selection is intentionally conservative:
+
+1. Use WebGL2 when detection succeeds.
+2. Use `server-cpu` when WebGL2 is unavailable, disabled with `?renderer=server`, or the shader renderer fails.
+3. Detect WebGPU only as diagnostics. It is not required and is not used for rendering yet.
+
+The React app disposes WebGL buffers/programs, removes context event listeners, and revokes server preview object URLs when previews are replaced or the component unmounts. Server fallback uses the existing binary `POST /api/generate` path, preserving deterministic generation inputs while GPU preview remains approximate.
+
 ## Server API
 
 API routes are registered in `src/server/apiRoutes.js`. Request normalization for generation lives in `src/server/generationRequest.js`, and structured API error helpers live in `src/server/errors.js`. The server entry remains JavaScript for now; this prompt deliberately prepares the boundary for TypeScript modules without migrating every generator or the Express app.

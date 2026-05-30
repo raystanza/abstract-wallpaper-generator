@@ -1,8 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import type { GeneratorMetadata } from "../shared/contracts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  GenerationRequest,
+  GeneratorMetadata,
+  RenderMode,
+} from "../shared/contracts";
 import { getGenerators } from "./lib/apiClient";
+import {
+  createPreviewRenderer,
+  detectRendererCapabilities,
+  renderServerPreview,
+  rendererModeLabel,
+  type BrowserRendererCapabilities,
+  type PreviewRenderer,
+} from "./rendering";
 
 type ApiStatus = "loading" | "ready" | "error";
+type PreviewStatus = "idle" | "rendering" | "ready" | "error";
 
 function formatCategory(value: string) {
   return value
@@ -13,12 +26,26 @@ function formatCategory(value: string) {
 }
 
 export default function App() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewRendererRef = useRef<PreviewRenderer | null>(null);
   const [generators, setGenerators] = useState<GeneratorMetadata[]>([]);
   const [selectedGeneratorId, setSelectedGeneratorId] = useState("");
   const [status, setStatus] = useState<ApiStatus>("loading");
   const [statusMessage, setStatusMessage] = useState(
     "Connecting to the generator API.",
   );
+  const [capabilities, setCapabilities] =
+    useState<BrowserRendererCapabilities | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
+  const [previewMessage, setPreviewMessage] = useState(
+    "Waiting for renderer capabilities.",
+  );
+  const [activeMode, setActiveMode] = useState<RenderMode>("server-cpu");
+  const [serverPreviewUrl, setServerPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCapabilities(detectRendererCapabilities());
+  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -75,6 +102,136 @@ export default function App() {
       ).sort(),
     [generators],
   );
+
+  const previewRequest = useMemo<GenerationRequest | null>(() => {
+    if (!selectedGenerator) {
+      return null;
+    }
+
+    return {
+      width: 960,
+      height: 540,
+      shapes: selectedGenerator.defaults.shapes,
+      shapeTypes: selectedGenerator.defaults.shapeTypes,
+      colorPalette: selectedGenerator.defaults.colorPalette,
+      background: selectedGenerator.defaults.background,
+      generationType: selectedGenerator.id,
+      seed:
+        selectedGenerator.defaults.seed || `preview-${selectedGenerator.id}`,
+      options: selectedGenerator.defaults.options,
+    };
+  }, [selectedGenerator]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    let objectUrl: string | null = null;
+    const canvas = canvasRef.current;
+
+    previewRendererRef.current?.dispose();
+    previewRendererRef.current = null;
+
+    if (!canvas || !capabilities || !previewRequest) {
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    const targetCanvas = canvas;
+    const detectedCapabilities = capabilities;
+    const request = previewRequest;
+
+    async function renderFallback(reason: string) {
+      setPreviewStatus("rendering");
+      setPreviewMessage(`${reason} Rendering server preview.`);
+      const result = await renderServerPreview(request);
+      objectUrl = URL.createObjectURL(result.blob);
+
+      if (!isCurrent) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      setServerPreviewUrl((currentUrl) => {
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl);
+        }
+
+        return objectUrl;
+      });
+      setActiveMode("server-cpu");
+      setPreviewStatus("ready");
+      setPreviewMessage(
+        `CPU/server fallback rendered in ${(result.metadata.elapsedMs ?? 0).toFixed(1)}ms.`,
+      );
+    }
+
+    async function renderPreview() {
+      setPreviewStatus("rendering");
+      setPreviewMessage("Preparing preview renderer.");
+
+      if (detectedCapabilities.preferredMode !== "webgl2") {
+        await renderFallback("WebGL2 preview is unavailable.");
+        return;
+      }
+
+      try {
+        const renderer = createPreviewRenderer(targetCanvas, {
+          capabilities: detectedCapabilities,
+        });
+        previewRendererRef.current = renderer;
+        await renderer.renderPreview(request);
+
+        if (!isCurrent) {
+          return;
+        }
+
+        setServerPreviewUrl((currentUrl) => {
+          if (currentUrl) {
+            URL.revokeObjectURL(currentUrl);
+          }
+
+          return null;
+        });
+        setActiveMode("webgl2");
+        setPreviewStatus("ready");
+        setPreviewMessage("GPU preview active.");
+      } catch (error) {
+        previewRendererRef.current?.dispose();
+        previewRendererRef.current = null;
+
+        if (!isCurrent) {
+          return;
+        }
+
+        await renderFallback(
+          error instanceof Error
+            ? `GPU preview failed: ${error.message}.`
+            : "GPU preview failed.",
+        );
+      }
+    }
+
+    renderPreview().catch((error) => {
+      if (!isCurrent) {
+        return;
+      }
+
+      setPreviewStatus("error");
+      setPreviewMessage(
+        error instanceof Error ? error.message : "Preview rendering failed.",
+      );
+    });
+
+    return () => {
+      isCurrent = false;
+      previewRendererRef.current?.dispose();
+      previewRendererRef.current = null;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [capabilities, previewRequest]);
 
   return (
     <main className="studio-shell" aria-labelledby="app-title">
@@ -136,6 +293,27 @@ export default function App() {
             {statusMessage}
           </p>
         </section>
+
+        <section className="control-group" aria-labelledby="renderer-heading">
+          <div className="section-title-row">
+            <h2 id="renderer-heading">Renderer</h2>
+            <span className={`status-pill status-pill--${previewStatus}`}>
+              {rendererModeLabel(activeMode)}
+            </span>
+          </div>
+          <p className="status-copy" role="status">
+            {previewMessage}
+          </p>
+          <dl className="diagnostics-list" aria-label="Renderer diagnostics">
+            {(capabilities?.diagnostics ?? ["Detecting renderer."]).map(
+              (detail) => (
+                <div key={detail}>
+                  <dt>{detail}</dt>
+                </div>
+              ),
+            )}
+          </dl>
+        </section>
       </aside>
 
       <section className="preview-workspace" aria-label="Wallpaper preview">
@@ -151,11 +329,18 @@ export default function App() {
         </div>
 
         <div className="preview-stage">
-          <div className="preview-canvas" aria-hidden="true">
-            <span className="preview-line preview-line--one" />
-            <span className="preview-line preview-line--two" />
-            <span className="preview-line preview-line--three" />
-          </div>
+          <canvas
+            ref={canvasRef}
+            className="preview-render-canvas"
+            aria-label="Hardware accelerated abstract wallpaper preview"
+          />
+          {serverPreviewUrl ? (
+            <img
+              className="preview-render-image"
+              src={serverPreviewUrl}
+              alt="Server-rendered abstract wallpaper preview"
+            />
+          ) : null}
           <div className="preview-details">
             <span className="category-label">
               {selectedGenerator
@@ -164,9 +349,9 @@ export default function App() {
             </span>
             <h3>{selectedGenerator?.name ?? "No generator selected"}</h3>
             <p>
-              This React workspace is connected to the existing Express API.
-              Live rendering controls will build on this shell in the next
-              migration prompts.
+              {previewStatus === "ready"
+                ? previewMessage
+                : "The preview layer detects browser GPU support and falls back to server rendering when needed."}
             </p>
           </div>
         </div>

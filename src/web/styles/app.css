@@ -148,6 +148,11 @@ h3 {
   color: var(--danger);
 }
 
+.status-pill--rendering {
+  background: #fff3db;
+  color: var(--warning);
+}
+
 label,
 .metric-label {
   color: var(--text-muted);
@@ -177,6 +182,29 @@ select:focus-visible {
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.diagnostics-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.diagnostics-list div {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-muted);
+}
+
+.diagnostics-list dt {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metric-grid {
@@ -251,10 +279,29 @@ select:focus-visible {
     linear-gradient(315deg, rgba(31, 122, 82, 0.14), transparent 34%), #f8fafc;
 }
 
-.preview-canvas {
+.preview-canvas,
+.preview-render-canvas,
+.preview-render-image {
   position: absolute;
   inset: 0;
+}
+
+.preview-canvas {
   overflow: hidden;
+}
+
+.preview-render-canvas,
+.preview-render-image {
+  width: 100%;
+  height: 100%;
+}
+
+.preview-render-canvas {
+  display: block;
+}
+
+.preview-render-image {
+  object-fit: cover;
 }
 
 .preview-line {
