@@ -6,12 +6,12 @@
 
 1. The browser loads the creative workspace from `public/index.html`.
 2. `public/script.js` requests generator metadata from `GET /api/generators`.
-3. The user selects a generator, resolution, palette, detail level, optional seed, and any generator-specific controls.
+3. The user selects a generator, resolution, motif palette, background, detail level, optional seed, and any generator-specific controls.
 4. The browser posts JSON to `POST /api/generate`.
 5. `index.js` normalizes request fields and passes them to the shared generation core.
-6. `src/generation/validation.js` validates dimensions, detail, palette, seed, shape types, and generator ID.
-7. `src/generation/renderWallpaper.js` creates a canvas, installs deterministic randomness for the render, invokes the selected generator, and returns a PNG buffer.
-8. The API returns image bytes directly with metadata headers for filename, generator, palette, resolution, seed, and render time.
+6. `src/generation/validation.js` validates dimensions, detail, palette, background, seed, shape types, and generator ID.
+7. `src/generation/renderWallpaper.js` creates a canvas, paints the selected background, installs deterministic randomness for the render, invokes the selected generator, and returns a PNG buffer.
+8. The API returns image bytes directly with metadata headers for filename, generator, palette, background, resolution, seed, and render time.
 9. The UI creates an object URL for preview and uses the API filename header for download.
 
 The API returns image bytes for normal browser previews so stale generated files do not accumulate. Direct programmatic generation can still pass an explicit `outputFile`; in that case the shared renderer writes the PNG to disk after rendering.
@@ -28,7 +28,7 @@ Returns public generator metadata. Render functions are intentionally omitted.
     {
       "id": "shapes",
       "name": "Shapes",
-      "description": "Composed geometric layers over a palette backdrop...",
+      "description": "Composed geometric layers over the selected background...",
       "category": "geometry",
       "parameters": []
     }
@@ -47,6 +47,11 @@ Accepts a JSON generation request and returns a PNG response.
   "shapes": 50,
   "shapeTypes": ["circle", "rectangle", "triangle"],
   "colorPalette": "mixed",
+  "background": {
+    "type": "linear-gradient",
+    "colors": ["#101820", "#243B55"],
+    "direction": "diagonal"
+  },
   "generationType": "flow-field",
   "seed": "portfolio-demo"
 }
@@ -57,6 +62,7 @@ Successful responses use `Content-Type: image/png` and include:
 - `X-Wallpaper-Filename`
 - `X-Wallpaper-Generator`
 - `X-Wallpaper-Palette`
+- `X-Wallpaper-Background`
 - `X-Wallpaper-Resolution`
 - `X-Wallpaper-Seed`
 - `X-Generation-Time-Ms`
@@ -108,6 +114,7 @@ async function render(
     shapes,
     shapeTypes,
     colorPalette,
+    background,
     palette,
     generationType,
     seed,
@@ -117,7 +124,7 @@ async function render(
 ) {}
 ```
 
-Generators should use `rng` for random choices, sample from the provided `palette`, respect `width` and `height`, and keep runtime bounded for common wallpaper sizes.
+Generators should use `rng` for random choices, sample from the provided `palette` or `colorPalette` for foreground marks, respect the already-painted `background`, and keep runtime bounded for common wallpaper sizes.
 
 ## Testing Strategy
 

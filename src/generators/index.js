@@ -21,9 +21,19 @@ const drawCircuitBoard = require("./circuit-board");
 const sharedParameters = [
   {
     id: "colorPalette",
-    label: "Color Palette",
+    label: "Motif Palette",
     type: "palette",
     defaultValue: "mixed",
+  },
+  {
+    id: "background",
+    label: "Background",
+    type: "background",
+    defaultValue: {
+      type: "solid",
+      colors: ["#101820"],
+      direction: "diagonal",
+    },
   },
   {
     id: "seed",
@@ -48,7 +58,7 @@ const generators = {
     id: "shapes",
     name: "Shapes",
     description:
-      "Composed geometric layers over a palette backdrop with controlled scale, opacity, and bounds.",
+      "Composed geometric layers over the selected background with controlled scale, opacity, and palette colors.",
     category: "geometry",
     parameters: [
       densityParameter,
@@ -82,7 +92,7 @@ const generators = {
     id: "barnsley-fern",
     name: "Barnsley Fern",
     description:
-      "Iterated function system with dense fern points over a subtle palette field.",
+      "Iterated function system with dense palette-colored fern points over the selected background.",
     category: "fractal",
     parameters: [densityParameter, ...sharedParameters],
     render: drawBarnsleyFern,
@@ -181,7 +191,7 @@ const generators = {
     id: "water",
     name: "Water",
     description:
-      "Concentric ripple fields over a palette-water backdrop with bounded ripple density.",
+      "Concentric palette-colored ripple fields over the selected background with bounded ripple density.",
     category: "texture",
     parameters: [densityParameter, ...sharedParameters],
     render: drawWater,

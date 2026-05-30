@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawTriangle(ctx, x, y, size, depth, maxDepth, colorPalette) {
@@ -48,8 +48,6 @@ function drawSierpinski(ctx, request) {
   const size = Math.min(width, height) * (0.82 + rng() * 0.08);
   const x = width / 2;
   const y = height * 0.08;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   ctx.save();
   ctx.translate(x, y + size * 0.42);

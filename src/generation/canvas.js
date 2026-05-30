@@ -7,10 +7,15 @@ function fillLinearGradient(
   colors,
   direction = "diagonal",
 ) {
-  const gradient =
-    direction === "vertical"
-      ? ctx.createLinearGradient(0, 0, 0, height)
-      : ctx.createLinearGradient(0, 0, width, height);
+  let gradient;
+
+  if (direction === "vertical") {
+    gradient = ctx.createLinearGradient(0, 0, 0, height);
+  } else if (direction === "horizontal") {
+    gradient = ctx.createLinearGradient(0, 0, width, 0);
+  } else {
+    gradient = ctx.createLinearGradient(0, 0, width, height);
+  }
 
   const palette = Array.isArray(colors) ? colors : getPalette(colors);
   palette.forEach((color, index) => {
@@ -19,6 +24,53 @@ function fillLinearGradient(
   });
 
   ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function fillRadialGradient(ctx, width, height, colors) {
+  const palette = Array.isArray(colors) ? colors : getPalette(colors);
+  const gradient = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.45,
+    0,
+    width * 0.5,
+    height * 0.5,
+    Math.max(width, height) * 0.72,
+  );
+
+  palette.forEach((color, index) => {
+    const stop = palette.length === 1 ? 0 : index / (palette.length - 1);
+    gradient.addColorStop(stop, color);
+  });
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function fillBackground(ctx, width, height, background) {
+  const normalizedBackground = background || {
+    type: "solid",
+    colors: ["#101820"],
+    direction: "diagonal",
+  };
+
+  if (normalizedBackground.type === "linear-gradient") {
+    fillLinearGradient(
+      ctx,
+      width,
+      height,
+      normalizedBackground.colors,
+      normalizedBackground.direction,
+    );
+    return;
+  }
+
+  if (normalizedBackground.type === "radial-gradient") {
+    fillRadialGradient(ctx, width, height, normalizedBackground.colors);
+    return;
+  }
+
+  ctx.fillStyle = normalizedBackground.colors[0];
   ctx.fillRect(0, 0, width, height);
 }
 
@@ -62,7 +114,9 @@ function strokePaletteLine(ctx, paletteName, t, alpha = 1) {
 
 module.exports = {
   drawVignette,
+  fillBackground,
   fillLinearGradient,
   fillRadialBackdrop,
+  fillRadialGradient,
   strokePaletteLine,
 };

@@ -68,7 +68,7 @@
 
           <section class="control-section" aria-labelledby="styleHeading">
             <h2 id="styleHeading">Style</h2>
-            <label for="colorPalette">Palette</label>
+            <label for="colorPalette">Motif palette</label>
             <select id="colorPalette" name="colorPalette" required>
               <option value="mixed" selected>Mixed</option>
               <option value="warm">Warm</option>
@@ -88,6 +88,41 @@
               class="palette-swatches"
               aria-hidden="true"
             ></div>
+
+            <label for="backgroundType">Background</label>
+            <select id="backgroundType" name="backgroundType">
+              <option value="solid" selected>Solid</option>
+              <option value="linear-gradient">Linear gradient</option>
+              <option value="radial-gradient">Radial gradient</option>
+            </select>
+            <div class="background-grid">
+              <div>
+                <label for="backgroundColor">Start color</label>
+                <input
+                  type="color"
+                  id="backgroundColor"
+                  name="backgroundColor"
+                  value="#101820"
+                />
+              </div>
+              <div id="backgroundColor2Group">
+                <label for="backgroundColor2">End color</label>
+                <input
+                  type="color"
+                  id="backgroundColor2"
+                  name="backgroundColor2"
+                  value="#243B55"
+                />
+              </div>
+            </div>
+            <div id="backgroundDirectionGroup">
+              <label for="backgroundDirection">Gradient direction</label>
+              <select id="backgroundDirection" name="backgroundDirection">
+                <option value="diagonal" selected>Diagonal</option>
+                <option value="vertical">Vertical</option>
+                <option value="horizontal">Horizontal</option>
+              </select>
+            </div>
 
             <label for="shapes">Detail</label>
             <div class="range-row">
@@ -190,6 +225,10 @@
           <div>
             <dt>Palette</dt>
             <dd id="statusPalette">Mixed</dd>
+          </div>
+          <div>
+            <dt>Background</dt>
+            <dd id="statusBackground">Solid</dd>
           </div>
           <div>
             <dt>Seed</dt>

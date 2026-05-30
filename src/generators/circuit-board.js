@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawCircuitBoard(ctx, request) {
@@ -10,8 +10,6 @@ function drawCircuitBoard(ctx, request) {
   const columns = Math.ceil(width / cellSize);
   const rows = Math.ceil(height / cellSize);
   const traceCount = Math.min(420, Math.max(70, shapes * 2.2));
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

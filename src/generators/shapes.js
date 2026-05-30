@@ -1,4 +1,4 @@
-const { drawVignette, fillRadialBackdrop } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { samplePalette } = require("../generation/color");
 
 function randomBetween(rng, min, max) {
@@ -179,8 +179,6 @@ function drawShapes(ctx, request) {
   const minDimension = Math.min(width, height);
   const types =
     shapeTypes.length > 0 ? shapeTypes : ["circle", "rectangle", "triangle"];
-
-  fillRadialBackdrop(ctx, width, height, colorPalette);
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

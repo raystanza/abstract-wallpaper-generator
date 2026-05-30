@@ -56,6 +56,43 @@ test("generation validation rejects unsupported generator and palette values", (
   );
 });
 
+test("generation validation normalizes background options", () => {
+  const request = validateGenerationInput({
+    width: 640,
+    height: 360,
+    shapes: 10,
+    generationType: "waves",
+    colorPalette: "mixed",
+    background: {
+      type: "linear-gradient",
+      colors: ["123", "#456789"],
+      direction: "horizontal",
+    },
+  });
+
+  assert.deepEqual(request.background, {
+    type: "linear-gradient",
+    colors: ["#112233", "#456789"],
+    direction: "horizontal",
+  });
+
+  assert.throws(
+    () =>
+      validateGenerationInput({
+        width: 640,
+        height: 360,
+        shapes: 10,
+        generationType: "waves",
+        colorPalette: "mixed",
+        background: {
+          type: "linear-gradient",
+          colors: ["not-a-color"],
+        },
+      }),
+    ValidationError,
+  );
+});
+
 test("renderWallpaper writes png output for representative generators", async () => {
   const outputDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "awg-"));
   const cases = ["shapes", "waves"];
@@ -69,6 +106,11 @@ test("renderWallpaper writes png output for representative generators", async ()
         shapes: 8,
         shapeTypes: ["circle", "rectangle"],
         colorPalette: "mixed",
+        background: {
+          type: "linear-gradient",
+          colors: ["#101820", "#243B55"],
+          direction: "diagonal",
+        },
         generationType,
         seed: `test-${generationType}`,
         outputFile,

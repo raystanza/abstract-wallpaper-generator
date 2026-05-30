@@ -72,6 +72,10 @@ test("POST /api/generate returns png bytes with response metadata", async () => 
         height: 128,
         shapes: 8,
         colorPalette: "ocean",
+        background: {
+          type: "solid",
+          colors: ["#101820"],
+        },
         generationType: "shapes",
         seed: "api-test",
         shapeTypes: ["circle", "rectangle"],
@@ -84,6 +88,10 @@ test("POST /api/generate returns png bytes with response metadata", async () => 
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(response.headers.get("x-wallpaper-generator"), "shapes");
     assert.equal(response.headers.get("x-wallpaper-palette"), "ocean");
+    assert.equal(
+      response.headers.get("x-wallpaper-background"),
+      '{"type":"solid","colors":["#101820"],"direction":"diagonal"}',
+    );
     assert.equal(response.headers.get("x-wallpaper-resolution"), "180x128");
     assert.equal(response.headers.get("x-wallpaper-seed"), "api-test");
     assert.match(

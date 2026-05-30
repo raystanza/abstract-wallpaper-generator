@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const {
   colorAtCss,
   hexToRgb,
@@ -10,8 +10,6 @@ function drawBubbles(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const count = Math.min(Math.max(shapes, 8), 360);
   const minDimension = Math.min(width, height);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   for (let i = 0; i < count; i++) {
     const x = rng() * width;

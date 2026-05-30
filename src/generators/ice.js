@@ -1,12 +1,10 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawIce(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const shardCount = Math.min(Math.max(shapes * 2, 60), 1200);
   const diagonal = Math.hypot(width, height);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

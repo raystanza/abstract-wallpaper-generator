@@ -1,12 +1,10 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawFractalTree(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const depth = Math.max(7, Math.min(12, Math.round(7 + shapes / 18)));
   const startLength = height * (0.22 + rng() * 0.12);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   function drawBranch(x, y, length, angle, currentDepth, branchWidth) {
     if (currentDepth <= 0 || length < 2) {
@@ -47,7 +45,6 @@ function drawFractalTree(ctx, request) {
   }
 
   ctx.save();
-  ctx.globalCompositeOperation = "multiply";
   drawBranch(
     width / 2,
     height * 1.04,

@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawKochCurve(ctx, x1, y1, x2, y2, depth) {
@@ -32,8 +32,6 @@ function drawKochSnowflake(ctx, request) {
   const centerX = width / 2;
   const centerY = height / 2;
   const triangleHeight = (Math.sqrt(3) / 2) * size;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   const points = [
     [centerX - size / 2, centerY + triangleHeight / 3],

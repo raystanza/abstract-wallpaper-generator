@@ -196,13 +196,16 @@ a:focus-visible {
   font-size: 0.88rem;
 }
 
-.dimension-grid {
+.dimension-grid,
+.background-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
-.dimension-grid > div {
+.dimension-grid > div,
+.background-grid > div,
+#backgroundDirectionGroup {
   min-width: 0;
 }
 
@@ -218,6 +221,10 @@ a:focus-visible {
   height: 20px;
   border-radius: 5px;
   border: 1px solid rgba(24, 32, 42, 0.12);
+}
+
+input[type="color"] {
+  padding: 4px;
 }
 
 .range-row {
@@ -425,7 +432,7 @@ a:focus-visible {
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin: 0;
 }
@@ -485,6 +492,7 @@ a:focus-visible {
   }
 
   .dimension-grid,
+  .background-grid,
   .shape-grid,
   .status-grid {
     grid-template-columns: 1fr;

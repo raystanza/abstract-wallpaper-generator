@@ -1,5 +1,5 @@
 const { createNoise2D } = require("simplex-noise");
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawTopographicContours(ctx, request) {
@@ -13,10 +13,7 @@ function drawTopographicContours(ctx, request) {
   }));
   const contourCount = Math.min(90, Math.max(28, Math.round(shapes * 0.85)));
 
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
-
   ctx.save();
-  ctx.globalCompositeOperation = "multiply";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 

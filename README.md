@@ -43,7 +43,7 @@ The web app opens directly into the wallpaper workspace:
 
 1. Choose a generator from the algorithm selector.
 2. Pick a resolution preset or enter a custom width and height.
-3. Select a palette and detail level.
+3. Select a motif palette, background style, and detail level.
 4. Optionally enter a seed for reproducible output.
 5. Generate a preview and download the PNG.
 
@@ -67,6 +67,11 @@ curl -X POST http://localhost:3000/api/generate \
     "height": 720,
     "shapes": 40,
     "colorPalette": "ocean",
+    "background": {
+      "type": "linear-gradient",
+      "colors": ["#101820", "#243B55"],
+      "direction": "diagonal"
+    },
     "generationType": "flow-field",
     "seed": "demo-seed"
   }' \
@@ -131,7 +136,7 @@ abstract-wallpaper-generator
 
 The current app includes these generator modules:
 
-- `barnsley-fern` - dense iterated fern points over a subtle palette field.
+- `barnsley-fern` - dense iterated fern points over the selected background.
 - `bokeh` - multi-depth blurred light circles with glow.
 - `bubbles` - translucent bubble fields with highlights and outlines.
 - `fire` - bounded noise-driven heat texture.
@@ -147,11 +152,11 @@ The current app includes these generator modules:
 - `snow` - snowflake crystal field with seeded rotation.
 - `topographic-contours` - noise-warped elevation contour rings.
 - `voronoi-cells` - cellular nearest-site diagram.
-- `water` - concentric ripple fields over a palette-water backdrop.
+- `water` - concentric ripple fields over the selected background.
 - `waves` - layered sinusoidal wave fields.
 - `circuit-board` - orthogonal trace routing with nodes.
 
-Generator metadata and registration live in `src/generators/index.js`. The frontend reads metadata from `GET /api/generators` and posts generation requests to `POST /api/generate`. The generation endpoint returns PNG bytes directly with response headers for filename, generator, palette, resolution, seed, and render time. The legacy-compatible `POST /generate` route remains available as an alias.
+Generator metadata and registration live in `src/generators/index.js`. The frontend reads metadata from `GET /api/generators` and posts generation requests to `POST /api/generate`. The generation endpoint returns PNG bytes directly with response headers for filename, generator, palette, background, resolution, seed, and render time. The legacy-compatible `POST /generate` route remains available as an alias.
 
 ## Architecture
 

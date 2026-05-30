@@ -1,11 +1,9 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawWater(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const rippleSources = Math.min(Math.max(shapes, 12), 180);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

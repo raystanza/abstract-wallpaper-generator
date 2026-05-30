@@ -3,8 +3,8 @@ const { createCanvas } = require("canvas");
 const { validateGenerationInput } = require("./validation");
 const { ensureOutputDirectory } = require("./output");
 const { getPaletteColors } = require("./palettes");
+const { fillBackground } = require("./canvas");
 const { createSeededRandom, withSeededMathRandom } = require("../random");
-const { getRandomColor } = require("../utils");
 
 async function renderWallpaper(input) {
   const request = validateGenerationInput(input);
@@ -13,8 +13,7 @@ async function renderWallpaper(input) {
   const rng = createSeededRandom(request.seed);
 
   await withSeededMathRandom(request.seed, async () => {
-    ctx.fillStyle = getRandomColor();
-    ctx.fillRect(0, 0, request.width, request.height);
+    fillBackground(ctx, request.width, request.height, request.background);
 
     await request.generator.render(ctx, {
       ...request,
@@ -38,6 +37,7 @@ async function renderWallpaper(input) {
     height: request.height,
     generationType: request.generationType,
     colorPalette: request.colorPalette,
+    background: request.background,
     seed: request.seed,
   };
 }

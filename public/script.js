@@ -60,6 +60,12 @@ const elements = {
   height: document.getElementById("height"),
   colorPalette: document.getElementById("colorPalette"),
   paletteSwatches: document.getElementById("paletteSwatches"),
+  backgroundType: document.getElementById("backgroundType"),
+  backgroundColor: document.getElementById("backgroundColor"),
+  backgroundColor2: document.getElementById("backgroundColor2"),
+  backgroundColor2Group: document.getElementById("backgroundColor2Group"),
+  backgroundDirection: document.getElementById("backgroundDirection"),
+  backgroundDirectionGroup: document.getElementById("backgroundDirectionGroup"),
   densityRange: document.getElementById("densityRange"),
   shapes: document.getElementById("shapes"),
   shapeTypeGroup: document.getElementById("shapeTypeGroup"),
@@ -76,6 +82,7 @@ const elements = {
   statusGenerator: document.getElementById("statusGenerator"),
   statusResolution: document.getElementById("statusResolution"),
   statusPalette: document.getElementById("statusPalette"),
+  statusBackground: document.getElementById("statusBackground"),
   statusSeed: document.getElementById("statusSeed"),
   statusTime: document.getElementById("statusTime"),
 };
@@ -124,6 +131,26 @@ function updateSwatches() {
       return swatch;
     }),
   );
+}
+
+function getBackgroundLabel() {
+  const typeLabel =
+    elements.backgroundType.options[elements.backgroundType.selectedIndex]
+      ?.textContent || titleCase(elements.backgroundType.value);
+
+  if (elements.backgroundType.value === "solid") {
+    return `${typeLabel} ${elements.backgroundColor.value.toUpperCase()}`;
+  }
+
+  return `${typeLabel} ${elements.backgroundColor.value.toUpperCase()} to ${elements.backgroundColor2.value.toUpperCase()}`;
+}
+
+function syncBackgroundControls() {
+  const isGradient = elements.backgroundType.value !== "solid";
+  elements.backgroundColor2Group.hidden = !isGradient;
+  elements.backgroundDirectionGroup.hidden =
+    elements.backgroundType.value !== "linear-gradient";
+  updateStatus();
 }
 
 function renderShapeOptions() {
@@ -289,6 +316,14 @@ function createRequestPayload() {
     height: Number(elements.height.value),
     shapes: Number(elements.shapes.value),
     colorPalette: elements.colorPalette.value,
+    background: {
+      type: elements.backgroundType.value,
+      colors:
+        elements.backgroundType.value === "solid"
+          ? [elements.backgroundColor.value]
+          : [elements.backgroundColor.value, elements.backgroundColor2.value],
+      direction: elements.backgroundDirection.value,
+    },
     generationType: elements.generatorSelect.value,
     shapeTypes:
       selectedShapeTypes.length > 0
@@ -325,6 +360,7 @@ function updateStatus(elapsedMs, metadata = {}) {
   elements.statusPalette.textContent =
     elements.colorPalette.options[elements.colorPalette.selectedIndex]
       ?.textContent || elements.colorPalette.value;
+  elements.statusBackground.textContent = getBackgroundLabel();
   elements.statusSeed.textContent =
     metadata.seed || elements.seed.value.trim() || "Auto";
 
@@ -443,6 +479,10 @@ function bindEvents() {
     updateSwatches();
     updateStatus();
   });
+  elements.backgroundType.addEventListener("change", syncBackgroundControls);
+  elements.backgroundColor.addEventListener("input", updateStatus);
+  elements.backgroundColor2.addEventListener("input", updateStatus);
+  elements.backgroundDirection.addEventListener("change", updateStatus);
   elements.densityRange.addEventListener("input", () =>
     syncDensityInputs("range"),
   );
@@ -458,6 +498,7 @@ function bindEvents() {
 function init() {
   renderShapeOptions();
   updateSwatches();
+  syncBackgroundControls();
   bindEvents();
   loadGenerators();
 }

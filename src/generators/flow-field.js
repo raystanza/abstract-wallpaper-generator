@@ -1,5 +1,5 @@
 const { createNoise2D } = require("simplex-noise");
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawFlowField(ctx, request) {
@@ -9,8 +9,6 @@ function drawFlowField(ctx, request) {
   const stepCount = 70;
   const stepLength = Math.min(width, height) * 0.008;
   const noiseScale = 2.8 + rng() * 2.4;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

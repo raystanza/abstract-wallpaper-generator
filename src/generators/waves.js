@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawWaves(ctx, request) {
@@ -6,8 +6,6 @@ function drawWaves(ctx, request) {
   const lineCount = Math.max(14, Math.min(96, Math.round(shapes * 0.9)));
   const amplitude = height * (0.018 + rng() * 0.035);
   const frequency = 0.006 + rng() * 0.009;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

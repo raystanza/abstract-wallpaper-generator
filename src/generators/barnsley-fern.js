@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawBarnsleyFern(ctx, request) {
@@ -10,8 +10,6 @@ function drawBarnsleyFern(ctx, request) {
   const offsetY = height * 0.96;
   let x = 0;
   let y = 0;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

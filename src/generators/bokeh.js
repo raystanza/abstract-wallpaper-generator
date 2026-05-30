@@ -6,14 +6,12 @@ const {
   rgbToCss,
   samplePalette,
 } = require("../generation/color");
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 
 async function drawBokeh(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const minDimension = Math.min(width, height);
   const baseCount = Math.min(Math.max(shapes, 18), 240);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   const layers = [
     {

@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawSnowflake(ctx, x, y, size, color, rng) {
@@ -41,8 +41,6 @@ function drawSnow(ctx, request) {
   const { width, height, shapes, colorPalette, rng } = request;
   const count = Math.min(Math.max(shapes, 16), 360);
   const minDimension = Math.min(width, height);
-
-  fillLinearGradient(ctx, width, height, colorPalette, "vertical");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";

@@ -1,4 +1,4 @@
-const { drawVignette, fillLinearGradient } = require("../generation/canvas");
+const { drawVignette } = require("../generation/canvas");
 const { colorAtCss } = require("../generation/color");
 
 function drawParticleOrbits(ctx, request) {
@@ -11,8 +11,6 @@ function drawParticleOrbits(ctx, request) {
   }));
   const trailCount = Math.min(520, Math.max(80, shapes * 3));
   const steps = 110;
-
-  fillLinearGradient(ctx, width, height, colorPalette, "diagonal");
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
