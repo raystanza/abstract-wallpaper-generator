@@ -111,10 +111,10 @@ The current app includes these generator modules:
 - `waves` - layered sinusoidal wave fields.
 - `circuit-board` - orthogonal trace routing with nodes.
 
-Generator metadata and registration live in `src/generators/index.js`. The current frontend still posts to the legacy-compatible `/generate` route, and generator metadata is available at `/api/generators`.
+Generator metadata and registration live in `src/generators/index.js`. The frontend reads metadata from `GET /api/generators` and posts generation requests to `POST /api/generate`. The generation endpoint returns PNG bytes directly with response headers for filename, generator, palette, resolution, seed, and render time. The legacy-compatible `POST /generate` route remains available as an alias.
 
 ## Notes
 
-- Generated wallpapers are written under `output/`, which is ignored by git.
+- Browser previews are returned directly by the API, so normal UI usage does not accumulate generated files. Direct generation code can still pass an explicit `outputFile`; those generated wallpapers are written under `output/`, which is ignored by git.
 - `package-lock.json` is intentionally not used; pnpm is the package manager for this project.
 - The old README described CLI flags for `node index.js`, but the current `index.js` starts the web server. CLI support can be reintroduced later as a dedicated command if needed.

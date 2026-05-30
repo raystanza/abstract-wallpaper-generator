@@ -1,30 +1,45 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 function sanitizeSegment(value) {
-    return String(value)
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 80) || 'wallpaper';
+  return (
+    String(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "wallpaper"
+  );
 }
 
 function createDefaultOutputPath({ generationType, width, height, seed }) {
-    const outputDirectory = path.join(__dirname, '..', '..', 'output');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const seedPart = seed ? `_${sanitizeSegment(seed)}` : '';
-    const filename = `${sanitizeSegment(generationType)}_${width}x${height}${seedPart}_${timestamp}.png`;
+  const outputDirectory = path.join(__dirname, "..", "..", "output");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const seedPart = seed ? `_${sanitizeSegment(seed)}` : "";
+  const filename = `${sanitizeSegment(generationType)}_${width}x${height}${seedPart}_${timestamp}.png`;
 
-    return path.join(outputDirectory, filename);
+  return path.join(outputDirectory, filename);
+}
+
+function createDownloadFilename({
+  generationType,
+  width,
+  height,
+  seed,
+  createdAt = new Date(),
+}) {
+  const timestamp = createdAt.toISOString().replace(/[:.]/g, "-");
+  const seedPart = seed ? `_${sanitizeSegment(seed)}` : "";
+
+  return `${sanitizeSegment(generationType)}_${width}x${height}${seedPart}_${timestamp}.png`;
 }
 
 function ensureOutputDirectory(outputFile) {
-    fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+  fs.mkdirSync(path.dirname(outputFile), { recursive: true });
 }
 
 module.exports = {
-    createDefaultOutputPath,
-    ensureOutputDirectory,
-    sanitizeSegment,
+  createDownloadFilename,
+  createDefaultOutputPath,
+  ensureOutputDirectory,
+  sanitizeSegment,
 };
-
