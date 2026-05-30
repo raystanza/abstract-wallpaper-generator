@@ -17,6 +17,8 @@ const drawVoronoiCells = require("./voronoi-cells");
 const drawWater = require("./water");
 const drawWaves = require("./waves");
 const drawCircuitBoard = require("./circuit-board");
+const { getPaletteNames } = require("../generation/palettes");
+const { normalizeGeneratorMetadata } = require("../shared/generationContract");
 
 const sharedParameters = [
   {
@@ -256,7 +258,11 @@ function listGenerators() {
 }
 
 function listGeneratorMetadata() {
-  return listGenerators().map(({ render, ...metadata }) => metadata);
+  return listGenerators().map((generator) =>
+    normalizeGeneratorMetadata(generator, {
+      paletteNames: getPaletteNames(),
+    }),
+  );
 }
 
 module.exports = {

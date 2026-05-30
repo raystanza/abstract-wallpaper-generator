@@ -1,26 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-type GeneratorParameter = {
-  id: string;
-  label?: string;
-  type?: string;
-  defaultValue?: unknown;
-  min?: number;
-  max?: number;
-  step?: number;
-};
-
-type GeneratorMetadata = {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  parameters: GeneratorParameter[];
-};
-
-type GeneratorResponse = {
-  generators?: GeneratorMetadata[];
-};
+import type { GeneratorMetadata, GeneratorResponse } from "../shared/contracts";
 
 type ApiStatus = "loading" | "ready" | "error";
 

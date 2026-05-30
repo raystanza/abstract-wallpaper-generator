@@ -1,34 +1,15 @@
 const { generators, getGenerator, hasGenerator } = require("../generators");
 const { getPaletteNames, isPaletteName } = require("./palettes");
 const { createRandomSeed } = require("../random");
-
-const SHAPE_TYPES = [
-  "circle",
-  "rectangle",
-  "triangle",
-  "hexagon",
-  "rhombus",
-  "star",
-  "spiral",
-  "ellipse",
-  "pentagon",
-  "heart",
-  "diamond",
-  "cross",
-  "arrow",
-  "parallelogram",
-  "trapezoid",
-  "wave",
-  "zigzag",
-];
-
-const BACKGROUND_TYPES = ["solid", "linear-gradient", "radial-gradient"];
-const BACKGROUND_DIRECTIONS = ["diagonal", "vertical", "horizontal"];
-const DEFAULT_BACKGROUND = {
-  type: "solid",
-  colors: ["#101820"],
-  direction: "diagonal",
-};
+const {
+  BACKGROUND_DIRECTIONS,
+  BACKGROUND_TYPES,
+  DEFAULT_BACKGROUND,
+  DENSITY_LIMITS,
+  SHAPE_TYPES,
+  WALLPAPER_SIZE_LIMITS,
+  validateGeneratorOptions,
+} = require("../shared/generationContract");
 
 class ValidationError extends Error {
   constructor(message, details = []) {
@@ -144,20 +125,51 @@ function validateGenerationInput(input = {}) {
   const generationType = input.generationType || input.generatorId || "shapes";
   const colorPalette = input.colorPalette || input.palette || "mixed";
   const background = normalizeBackground(input, details);
-  const width = parseInteger(input.width, 1920);
-  const height = parseInteger(input.height, 1080);
-  const shapes = parseInteger(input.shapes ?? input.count, 50);
+  const width = parseInteger(
+    input.width,
+    WALLPAPER_SIZE_LIMITS.width.defaultValue,
+  );
+  const height = parseInteger(
+    input.height,
+    WALLPAPER_SIZE_LIMITS.height.defaultValue,
+  );
+  const shapes = parseInteger(
+    input.shapes ?? input.count,
+    DENSITY_LIMITS.defaultValue,
+  );
   const seed =
     input.seed === undefined || input.seed === null || input.seed === ""
       ? createRandomSeed()
       : String(input.seed);
   const shapeTypes = normalizeArray(input.shapeTypes);
+  const generator = hasGenerator(generationType)
+    ? getGenerator(generationType)
+    : null;
+  const options = input.options === undefined ? {} : input.options;
 
-  validateRange("width", width, 128, 7680, details);
-  validateRange("height", height, 128, 4320, details);
-  validateRange("shapes", shapes, 1, 5000, details);
+  validateRange(
+    "width",
+    width,
+    WALLPAPER_SIZE_LIMITS.width.min,
+    WALLPAPER_SIZE_LIMITS.width.max,
+    details,
+  );
+  validateRange(
+    "height",
+    height,
+    WALLPAPER_SIZE_LIMITS.height.min,
+    WALLPAPER_SIZE_LIMITS.height.max,
+    details,
+  );
+  validateRange(
+    "shapes",
+    shapes,
+    DENSITY_LIMITS.min,
+    DENSITY_LIMITS.max,
+    details,
+  );
 
-  if (!hasGenerator(generationType)) {
+  if (!generator) {
     details.push(
       `generationType must be one of: ${Object.keys(generators).join(", ")}.`,
     );
@@ -184,6 +196,14 @@ function validateGenerationInput(input = {}) {
     );
   }
 
+  if (generator) {
+    details.push(
+      ...validateGeneratorOptions(options, generator, {
+        paletteNames: getPaletteNames(),
+      }),
+    );
+  }
+
   if (details.length > 0) {
     throw new ValidationError("Invalid wallpaper generation request.", details);
   }
@@ -198,8 +218,8 @@ function validateGenerationInput(input = {}) {
     generationType,
     seed,
     outputFile: input.outputFile,
-    generator: getGenerator(generationType),
-    options: input.options || {},
+    generator,
+    options,
   };
 }
 

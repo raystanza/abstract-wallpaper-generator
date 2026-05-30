@@ -42,7 +42,28 @@ Returns public generator metadata. Render functions are intentionally omitted.
       "name": "Shapes",
       "description": "Composed geometric layers over the selected background...",
       "category": "geometry",
-      "parameters": []
+      "version": 1,
+      "parameters": [],
+      "defaults": {
+        "size": { "width": 1920, "height": 1080 },
+        "generationType": "shapes",
+        "shapes": 50,
+        "shapeTypes": ["circle", "rectangle"],
+        "colorPalette": "mixed",
+        "background": {
+          "type": "solid",
+          "colors": ["#101820"],
+          "direction": "diagonal"
+        },
+        "seed": "",
+        "options": {}
+      },
+      "rendering": {
+        "modes": ["server-cpu"],
+        "preferredPreviewMode": "server-cpu",
+        "exportMode": "server-cpu",
+        "gpuPreview": false
+      }
     }
   ]
 }
@@ -103,6 +124,8 @@ The generation core is intentionally small and modular:
 
 ## Generator Contract
 
+Shared cross-boundary TypeScript types live in `src/shared/contracts.ts`. The existing CommonJS server uses `src/shared/generationContract.js` for runtime constants, generator metadata normalization, and option validation while the backend remains JavaScript.
+
 Generators are registered in `src/generators/index.js`.
 
 Each registry entry should include:
@@ -111,8 +134,30 @@ Each registry entry should include:
 - `name`: UI display name.
 - `description`: short explanation for the UI and docs.
 - `category`: grouping such as `fractal`, `texture`, `algorithmic`, or `simulation`.
-- `parameters`: lightweight UI metadata.
+- `parameters`: control metadata normalized into the shared parameter model.
 - `render`: drawing function.
+
+Public generator metadata includes the fields above plus:
+
+- `version`: shared metadata contract version.
+- `defaults`: normalized default request values for size, generator, density, shape types, palette, background, seed, and generator options.
+- `rendering`: renderer capability metadata. The current app reports `server-cpu` for preview and export. Future GPU preview work should add `webgl2` support here without changing the high-level request shape.
+
+### Parameter Model
+
+Parameters use a `kind` field so the React studio can render controls dynamically:
+
+- `number`: has `min`, `max`, `step`, and numeric `defaultValue`.
+- `boolean`: has a boolean `defaultValue`.
+- `select`: has `options`, `multiple`, and a string or string-array `defaultValue`.
+- `text`: has a string `defaultValue` and optional `maxLength`.
+- `color`: has a hex color `defaultValue`.
+- `color-array`: has color defaults plus `minItems` and `maxItems`.
+- `palette`: has palette `options` and a palette-name `defaultValue`.
+- `background`: has a normalized background default.
+- `group`: can hold child parameters for advanced controls in later prompts.
+
+Current top-level request fields such as `shapes`, `shapeTypes`, `colorPalette`, `background`, and `seed` remain compatible with older API callers. Generator-specific values under `options` are now validated against the shared parameter model, and unsupported option keys are rejected.
 
 Each render function receives the canvas context and one options object:
 

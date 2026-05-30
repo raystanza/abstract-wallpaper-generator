@@ -15,6 +15,7 @@ const { getGenerator, listGeneratorMetadata } = require("../src/generators");
 test("generator registry exposes metadata without render functions", () => {
   const metadata = listGeneratorMetadata();
   const ids = metadata.map((generator) => generator.id);
+  const shapes = metadata.find((generator) => generator.id === "shapes");
 
   assert.ok(ids.includes("shapes"));
   assert.ok(ids.includes("waves"));
@@ -28,6 +29,11 @@ test("generator registry exposes metadata without render functions", () => {
     Object.prototype.hasOwnProperty.call(metadata[0], "render"),
     false,
   );
+  assert.equal(shapes.version, 1);
+  assert.equal(shapes.defaults.generationType, "shapes");
+  assert.equal(shapes.defaults.colorPalette, "mixed");
+  assert.equal(shapes.rendering.exportMode, "server-cpu");
+  assert.ok(shapes.parameters.every((parameter) => parameter.kind));
 });
 
 test("generation validation rejects unsupported generator and palette values", () => {
@@ -91,6 +97,49 @@ test("generation validation normalizes background options", () => {
       }),
     ValidationError,
   );
+});
+
+test("generation validation rejects unsupported option parameters", () => {
+  assert.throws(
+    () =>
+      validateGenerationInput({
+        width: 640,
+        height: 360,
+        shapes: 10,
+        generationType: "shapes",
+        colorPalette: "mixed",
+        options: {
+          unsupportedControl: true,
+        },
+      }),
+    (error) =>
+      error instanceof ValidationError &&
+      error.details.some((detail) =>
+        detail.includes("options contains unsupported parameters"),
+      ),
+  );
+});
+
+test("generation validation keeps existing generator requests compatible", () => {
+  const request = validateGenerationInput({
+    width: 180,
+    height: 128,
+    shapes: 8,
+    colorPalette: "ocean",
+    background: {
+      type: "solid",
+      colors: ["#101820"],
+    },
+    generationType: "shapes",
+    seed: "compatibility-test",
+    shapeTypes: ["circle", "rectangle"],
+  });
+
+  assert.equal(request.width, 180);
+  assert.equal(request.height, 128);
+  assert.equal(request.generationType, "shapes");
+  assert.equal(request.seed, "compatibility-test");
+  assert.deepEqual(request.shapeTypes, ["circle", "rectangle"]);
 });
 
 test("renderWallpaper writes png output for representative generators", async () => {

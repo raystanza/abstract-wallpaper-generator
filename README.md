@@ -182,6 +182,8 @@ The current app includes these generator modules:
 
 Generator metadata and registration live in `src/generators/index.js`. The frontend reads metadata from `GET /api/generators` and posts generation requests to `POST /api/generate`. The generation endpoint returns PNG bytes directly with response headers for filename, generator, palette, background, resolution, seed, and render time. The legacy-compatible `POST /generate` route remains available as an alias.
 
+Shared frontend/server contract types live in `src/shared/contracts.ts`, with the current JavaScript runtime adapter in `src/shared/generationContract.js`. Public generator metadata includes normalized parameter `kind` values, defaults, and renderer capability data so the React studio can render controls dynamically in later migration prompts.
+
 ## Architecture
 
 See [`docs/architecture.md`](docs/architecture.md) for the server API, request flow, generator contract, output behavior, and testing strategy.

@@ -49,12 +49,43 @@ test("GET /api/generators returns public generator metadata", async () => {
       assert.equal(typeof generator.name, "string");
       assert.equal(typeof generator.description, "string");
       assert.equal(typeof generator.category, "string");
+      assert.equal(generator.version, 1);
       assert.equal(Array.isArray(generator.parameters), true);
+      assert.equal(typeof generator.defaults, "object");
+      assert.equal(generator.defaults.generationType, generator.id);
+      assert.equal(generator.defaults.size.width, 1920);
+      assert.equal(generator.defaults.size.height, 1080);
+      assert.deepEqual(generator.rendering, {
+        modes: ["server-cpu"],
+        preferredPreviewMode: "server-cpu",
+        exportMode: "server-cpu",
+        gpuPreview: false,
+      });
       assert.equal(
         Object.prototype.hasOwnProperty.call(generator, "render"),
         false,
       );
     }
+
+    const shapes = body.generators.find(
+      (generator) => generator.id === "shapes",
+    );
+    const density = shapes.parameters.find(
+      (parameter) => parameter.id === "shapes",
+    );
+    const shapeTypes = shapes.parameters.find(
+      (parameter) => parameter.id === "shapeTypes",
+    );
+
+    assert.equal(density.kind, "number");
+    assert.equal(density.min, 1);
+    assert.equal(density.max, 5000);
+    assert.equal(density.defaultValue, 50);
+    assert.equal(shapeTypes.kind, "select");
+    assert.equal(shapeTypes.multiple, true);
+    assert.ok(
+      shapeTypes.options.some((option) => option.value === "rectangle"),
+    );
   } finally {
     await server.close();
   }
