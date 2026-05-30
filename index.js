@@ -6,18 +6,7 @@ const { ValidationError } = require("./src/generation/validation");
 const { createDownloadFilename } = require("./src/generation/output");
 const { listGeneratorMetadata } = require("./src/generators");
 
-const app = express();
 const port = 3000;
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/api/generators", (req, res) => {
-  res.json({
-    generators: listGeneratorMetadata(),
-  });
-});
 
 function normalizeShapeTypes(value) {
   if (Array.isArray(value)) {
@@ -92,20 +81,45 @@ async function generateImage(req, res) {
   }
 }
 
-app.post("/api/generate", generateImage);
-app.post("/generate", generateImage);
+function createApp() {
+  const app = express();
 
-app.use((error, req, res, next) => {
-  if (error instanceof SyntaxError && "body" in error) {
-    res.status(400).json({
-      error: "Invalid JSON request body.",
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, "public")));
+
+  app.get("/api/generators", (req, res) => {
+    res.json({
+      generators: listGeneratorMetadata(),
     });
-    return;
-  }
+  });
 
-  next(error);
-});
+  app.post("/api/generate", generateImage);
+  app.post("/generate", generateImage);
 
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
-});
+  app.use((error, req, res, next) => {
+    if (error instanceof SyntaxError && "body" in error) {
+      res.status(400).json({
+        error: "Invalid JSON request body.",
+      });
+      return;
+    }
+
+    next(error);
+  });
+
+  return app;
+}
+
+const app = createApp();
+
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server is running at http://localhost:${port}`);
+  });
+}
+
+module.exports = {
+  app,
+  createApp,
+};

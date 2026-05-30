@@ -37,6 +37,44 @@ Then open:
 http://localhost:3000
 ```
 
+## UI Workflow
+
+The web app opens directly into the wallpaper workspace:
+
+1. Choose a generator from the algorithm selector.
+2. Pick a resolution preset or enter a custom width and height.
+3. Select a palette and detail level.
+4. Optionally enter a seed for reproducible output.
+5. Generate a preview and download the PNG.
+
+The preview workflow returns image bytes directly from the API, so normal browser usage does not leave generated files behind.
+
+## API Usage
+
+List available generators:
+
+```sh
+curl http://localhost:3000/api/generators
+```
+
+Generate a PNG through the API:
+
+```sh
+curl -X POST http://localhost:3000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "width": 1280,
+    "height": 720,
+    "shapes": 40,
+    "colorPalette": "ocean",
+    "generationType": "flow-field",
+    "seed": "demo-seed"
+  }' \
+  --output wallpaper.png
+```
+
+Successful generation responses use `Content-Type: image/png` and include headers such as `X-Wallpaper-Filename`, `X-Wallpaper-Seed`, and `X-Generation-Time-Ms`. Invalid requests return structured JSON with an `error` string and a `details` array.
+
 ## Verification
 
 Run the baseline checks:
@@ -74,6 +112,8 @@ abstract-wallpaper-generator
 ├── index.js                  # Express server entry point
 ├── package.json              # Project metadata and pnpm scripts
 ├── pnpm-lock.yaml            # pnpm dependency lockfile
+├── docs
+│   └── architecture.md        # Technical design and request flow
 ├── public                    # Browser UI
 │   ├── index.html
 │   ├── script.js
@@ -113,8 +153,12 @@ The current app includes these generator modules:
 
 Generator metadata and registration live in `src/generators/index.js`. The frontend reads metadata from `GET /api/generators` and posts generation requests to `POST /api/generate`. The generation endpoint returns PNG bytes directly with response headers for filename, generator, palette, resolution, seed, and render time. The legacy-compatible `POST /generate` route remains available as an alias.
 
+## Architecture
+
+See [`docs/architecture.md`](docs/architecture.md) for the server API, request flow, generator contract, output behavior, and testing strategy.
+
 ## Notes
 
 - Browser previews are returned directly by the API, so normal UI usage does not accumulate generated files. Direct generation code can still pass an explicit `outputFile`; those generated wallpapers are written under `output/`, which is ignored by git.
 - `package-lock.json` is intentionally not used; pnpm is the package manager for this project.
-- The old README described CLI flags for `node index.js`, but the current `index.js` starts the web server. CLI support can be reintroduced later as a dedicated command if needed.
+- There is no dedicated CLI command yet; `pnpm start` starts the web server. CLI support can be reintroduced later as a dedicated command if needed.
