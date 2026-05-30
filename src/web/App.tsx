@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { GeneratorMetadata, GeneratorResponse } from "../shared/contracts";
+import type { GeneratorMetadata } from "../shared/contracts";
+import { getGenerators } from "./lib/apiClient";
 
 type ApiStatus = "loading" | "ready" | "error";
 
@@ -24,13 +25,7 @@ export default function App() {
 
     async function loadGenerators() {
       try {
-        const response = await fetch("/api/generators");
-
-        if (!response.ok) {
-          throw new Error(`Generator API returned ${response.status}.`);
-        }
-
-        const payload = (await response.json()) as GeneratorResponse;
+        const payload = await getGenerators();
         const nextGenerators = Array.isArray(payload.generators)
           ? payload.generators
           : [];

@@ -167,3 +167,20 @@ export type ExportRequest = GenerationRequest & {
 export type GeneratorResponse = {
   generators: GeneratorMetadata[];
 };
+
+export type ApiErrorBody = {
+  error: string;
+  code: string;
+  details?: string[];
+};
+
+export type HealthResponse = {
+  status: "ok";
+  contractVersion: number;
+  renderer: RenderMode;
+};
+
+export type GenerateWallpaperResponse = {
+  blob: Blob;
+  metadata: GenerationResultMetadata;
+};

@@ -28,7 +28,47 @@ Development commands:
 - `pnpm run build`: builds the frontend to `dist/`.
 - `pnpm start`: serves the Express API and the built frontend from `dist/`.
 
+The frontend uses typed API helpers in `src/web/lib/apiClient.ts`:
+
+- `getHealth()`
+- `getGenerators()`
+- `generateWallpaper()`
+- `exportWallpaper()`, currently a placeholder until Prompt 10 defines distinct export semantics.
+
 ## Server API
+
+API routes are registered in `src/server/apiRoutes.js`. Request normalization for generation lives in `src/server/generationRequest.js`, and structured API error helpers live in `src/server/errors.js`. The server entry remains JavaScript for now; this prompt deliberately prepares the boundary for TypeScript modules without migrating every generator or the Express app.
+
+### Error Format
+
+API errors return JSON with a stable code:
+
+```json
+{
+  "error": "Invalid wallpaper generation request.",
+  "code": "INVALID_GENERATION_REQUEST",
+  "details": ["width must be an integer between 128 and 7680."]
+}
+```
+
+Known codes:
+
+- `INVALID_GENERATION_REQUEST`
+- `INVALID_JSON`
+- `GENERATION_FAILED`
+- `NOT_FOUND`
+
+### `GET /api/health`
+
+Returns server and contract health metadata.
+
+```json
+{
+  "status": "ok",
+  "contractVersion": 1,
+  "renderer": "server-cpu"
+}
+```
 
 ### `GET /api/generators`
 
@@ -94,11 +134,31 @@ Successful responses use `Content-Type: image/png` and include:
 
 - `X-Wallpaper-Filename`
 - `X-Wallpaper-Generator`
+- `X-Wallpaper-Metadata`
 - `X-Wallpaper-Palette`
 - `X-Wallpaper-Background`
 - `X-Wallpaper-Resolution`
 - `X-Wallpaper-Seed`
 - `X-Generation-Time-Ms`
+
+`X-Wallpaper-Metadata` is a JSON header with resolved generation settings and elapsed time:
+
+```json
+{
+  "generationType": "flow-field",
+  "width": 1920,
+  "height": 1080,
+  "colorPalette": "mixed",
+  "background": {
+    "type": "linear-gradient",
+    "colors": ["#101820", "#243B55"],
+    "direction": "diagonal"
+  },
+  "seed": "portfolio-demo",
+  "filename": "flow-field_1920x1080_portfolio-demo_2026-05-30T12-00-00-000Z.png",
+  "elapsedMs": 123.4
+}
+```
 
 Invalid requests return structured JSON:
 
@@ -110,6 +170,10 @@ Invalid requests return structured JSON:
 ```
 
 `POST /generate` remains as a compatibility alias for older UI or script callers.
+
+### `POST /api/export`
+
+Not implemented yet. Export still uses the existing binary generation path. A distinct export API is reserved for Prompt 10, when high-resolution export and batch-rendering semantics are introduced.
 
 ## Generation Core
 

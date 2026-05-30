@@ -26,6 +26,24 @@ function assertPngBuffer(buffer) {
   );
 }
 
+test("GET /api/health returns server health metadata", async () => {
+  const server = await startTestServer();
+
+  try {
+    const response = await fetch(`${server.baseUrl}/api/health`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(body, {
+      status: "ok",
+      contractVersion: 1,
+      renderer: "server-cpu",
+    });
+  } finally {
+    await server.close();
+  }
+});
+
 test("GET /api/generators returns public generator metadata", async () => {
   const server = await startTestServer();
 
@@ -132,6 +150,20 @@ test("POST /api/generate returns png bytes with response metadata", async () => 
     assert.ok(
       Number.parseFloat(response.headers.get("x-generation-time-ms")) >= 0,
     );
+    assert.deepEqual(JSON.parse(response.headers.get("x-wallpaper-metadata")), {
+      generationType: "shapes",
+      width: 180,
+      height: 128,
+      colorPalette: "ocean",
+      background: {
+        type: "solid",
+        colors: ["#101820"],
+        direction: "diagonal",
+      },
+      seed: "api-test",
+      filename: response.headers.get("x-wallpaper-filename"),
+      elapsedMs: Number(response.headers.get("x-generation-time-ms")),
+    });
     assertPngBuffer(buffer);
   } finally {
     await server.close();
@@ -155,6 +187,7 @@ test("POST /api/generate returns structured validation errors", async () => {
 
     assert.equal(response.status, 400);
     assert.equal(body.error, "Invalid wallpaper generation request.");
+    assert.equal(body.code, "INVALID_GENERATION_REQUEST");
     assert.equal(Array.isArray(body.details), true);
     assert.ok(body.details.some((detail) => detail.includes("width must be")));
     assert.ok(
@@ -178,6 +211,24 @@ test("POST /api/generate returns structured JSON parse errors", async () => {
 
     assert.equal(response.status, 400);
     assert.equal(body.error, "Invalid JSON request body.");
+    assert.equal(body.code, "INVALID_JSON");
+  } finally {
+    await server.close();
+  }
+});
+
+test("unknown API routes return structured not found errors", async () => {
+  const server = await startTestServer();
+
+  try {
+    const response = await fetch(`${server.baseUrl}/api/export`, {
+      method: "POST",
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 404);
+    assert.equal(body.code, "NOT_FOUND");
+    assert.match(body.error, /API route POST \/api\/export was not found/);
   } finally {
     await server.close();
   }

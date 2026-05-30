@@ -71,6 +71,7 @@ The existing generation API still returns image bytes directly, so normal API pr
 List available generators:
 
 ```sh
+curl http://localhost:3000/api/health
 curl http://localhost:3000/api/generators
 ```
 
@@ -95,7 +96,9 @@ curl -X POST http://localhost:3000/api/generate \
   --output wallpaper.png
 ```
 
-Successful generation responses use `Content-Type: image/png` and include headers such as `X-Wallpaper-Filename`, `X-Wallpaper-Seed`, and `X-Generation-Time-Ms`. Invalid requests return structured JSON with an `error` string and a `details` array.
+Successful generation responses use `Content-Type: image/png` and include headers such as `X-Wallpaper-Filename`, `X-Wallpaper-Seed`, `X-Generation-Time-Ms`, and `X-Wallpaper-Metadata`. Invalid requests return structured JSON with an `error` string, stable `code`, and optional `details` array.
+
+Dedicated export semantics are planned for the later export prompt. Until then, use `POST /api/generate` for binary PNG generation.
 
 ## Verification
 
