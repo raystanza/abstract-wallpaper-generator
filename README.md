@@ -1,6 +1,6 @@
 # Abstract Wallpaper Generator
 
-Generate abstract wallpapers with a Node.js server, the `canvas` drawing API, and a lightweight browser interface. The current app serves a web UI for choosing a generator, resolution, palette, and shape settings, then returns a generated PNG preview for download.
+Generate abstract wallpapers with a Node.js server, the `canvas` drawing API, and a Vite-powered React studio. The current app serves a creator workspace for choosing a generator and inspecting API-backed metadata, while the existing generation API returns PNG previews for download.
 
 ## Prerequisites
 
@@ -19,13 +19,32 @@ pnpm install
 
 ## Development
 
-Start the development server with automatic restarts:
+Start the full development workflow:
 
 ```sh
 pnpm run dev
 ```
 
-Start the server without file watching:
+This runs the Express API on port 3000 and the Vite React app on port 5173. Open:
+
+```text
+http://localhost:5173
+```
+
+Run the servers separately when needed:
+
+```sh
+pnpm run dev:server
+pnpm run dev:web
+```
+
+Build the frontend for production:
+
+```sh
+pnpm run build
+```
+
+After building, start the Express server without file watching:
 
 ```sh
 pnpm start
@@ -39,15 +58,13 @@ http://localhost:3000
 
 ## UI Workflow
 
-The web app opens directly into the wallpaper workspace:
+The React app opens directly into the wallpaper studio foundation:
 
-1. Choose a generator from the algorithm selector.
-2. Pick a resolution preset or enter a custom width and height.
-3. Select a motif palette, background style, and detail level.
-4. Optionally enter a seed for reproducible output.
-5. Generate a preview and download the PNG.
+1. Loads generator metadata from `GET /api/generators`.
+2. Shows the available generator selector and selected generator details.
+3. Displays API connection status and a preview workspace placeholder.
 
-The preview workflow returns image bytes directly from the API, so normal browser usage does not leave generated files behind.
+The existing generation API still returns image bytes directly, so normal API preview usage does not leave generated files behind. Rich React controls and live preview orchestration will build on this foundation.
 
 ## API Usage
 
@@ -86,6 +103,8 @@ Run the baseline checks:
 
 ```sh
 pnpm run lint
+pnpm run typecheck
+pnpm run build
 pnpm test
 ```
 
@@ -104,10 +123,14 @@ pnpm run format
 ## Current Scripts
 
 - `pnpm start` - starts the Express server with Node.js.
-- `pnpm run dev` - starts the Express server through `nodemon`.
-- `pnpm run lint` - runs JavaScript syntax checks over server, source, and public scripts.
+- `pnpm run dev` - starts the Express API and Vite React app together.
+- `pnpm run dev:server` - starts the Express server through `nodemon`.
+- `pnpm run dev:web` - starts the Vite development server.
+- `pnpm run build` - builds the React frontend into `dist/`.
+- `pnpm run typecheck` - runs TypeScript checks for the frontend.
+- `pnpm run lint` - runs JavaScript syntax checks over the server, generation source, and tests.
 - `pnpm test` - runs Node's built-in test runner.
-- `pnpm run verify` - runs linting and tests.
+- `pnpm run verify` - runs linting, typechecking, frontend build, and tests.
 - `pnpm run format` - formats supported files with Prettier.
 
 ## Project Structure
@@ -117,18 +140,19 @@ abstract-wallpaper-generator
 ├── index.js                  # Express server entry point
 ├── package.json              # Project metadata and pnpm scripts
 ├── pnpm-lock.yaml            # pnpm dependency lockfile
+├── index.html                # Vite frontend entry point
+├── tsconfig.json             # Frontend TypeScript configuration
+├── vite.config.ts            # Vite React config and API proxy
 ├── docs
 │   └── architecture.md        # Technical design and request flow
-├── public                    # Browser UI
-│   ├── index.html
-│   ├── script.js
-│   └── style.css
 ├── src
 │   ├── generateWallpaper.js  # Backward-compatible generation entry point
 │   ├── generation            # Validation, output, palettes, and rendering core
 │   ├── generators            # Generator registry and individual generators
 │   ├── random.js             # Seeded random helpers
-│   └── utils.js              # Legacy shared helper functions
+│   ├── utils.js              # Legacy shared helper functions
+│   └── web                   # Vite React studio foundation
+├── dist                      # Production frontend build output, ignored by git
 └── dev                       # Modernization prompts and planning docs
 ```
 

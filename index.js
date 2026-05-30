@@ -6,6 +6,8 @@ const { createDownloadFilename } = require("./src/generation/output");
 const { listGeneratorMetadata } = require("./src/generators");
 
 const port = 3000;
+const publicDirectory = path.join(__dirname, "public");
+const clientBuildDirectory = path.join(__dirname, "dist");
 
 function normalizeShapeTypes(value) {
   if (Array.isArray(value)) {
@@ -92,7 +94,7 @@ function createApp() {
 
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
-  app.use(express.static(path.join(__dirname, "public")));
+  app.use(express.static(publicDirectory));
 
   app.get("/api/generators", (req, res) => {
     res.json({
@@ -102,6 +104,29 @@ function createApp() {
 
   app.post("/api/generate", generateImage);
   app.post("/generate", generateImage);
+
+  app.use(express.static(clientBuildDirectory));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+
+    res.sendFile(path.join(clientBuildDirectory, "index.html"), (error) => {
+      if (!error) {
+        return;
+      }
+
+      if (error.code === "ENOENT") {
+        res.status(404).send(
+          "Frontend build not found. Run `pnpm run build` or use `pnpm run dev` for the Vite development server.",
+        );
+        return;
+      }
+
+      next(error);
+    });
+  });
 
   app.use((error, req, res, next) => {
     if (error instanceof SyntaxError && "body" in error) {

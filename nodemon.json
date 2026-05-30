@@ -1,6 +1,12 @@
 {
-  "watch": ["src", "public", "views", "index.js"],
-  "ext": "js,json,css,html",
+  "watch": [
+    "src/generation",
+    "src/generators",
+    "src/random.js",
+    "src/utils.js",
+    "index.js"
+  ],
+  "ext": "js,json",
   "ignore": ["output/*", "node_modules/*"],
   "exec": "node index.js",
   "delay": "250"

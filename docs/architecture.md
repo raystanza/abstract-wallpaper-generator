@@ -1,20 +1,32 @@
 # Architecture
 
-`abstract-wallpaper-generator` is a Node.js and Express application that renders abstract wallpaper images with the `canvas` package. The browser UI is static HTML, CSS, and JavaScript served from `public/`.
+`abstract-wallpaper-generator` is a Node.js and Express application that renders abstract wallpaper images with the `canvas` package. The browser UI is now a Vite-powered React and TypeScript app under `src/web/`.
 
 ## Runtime Flow
 
-1. The browser loads the creative workspace from `public/index.html`.
-2. `public/script.js` requests generator metadata from `GET /api/generators`.
-3. The user selects a generator, resolution, motif palette, background, detail level, optional seed, and any generator-specific controls.
-4. The browser posts JSON to `POST /api/generate`.
-5. `index.js` normalizes request fields and passes them to the shared generation core.
-6. `src/generation/validation.js` validates dimensions, detail, palette, background, seed, shape types, and generator ID.
-7. `src/generation/renderWallpaper.js` creates a canvas, paints the selected background, installs deterministic randomness for the render, invokes the selected generator, and returns a PNG buffer.
-8. The API returns image bytes directly with metadata headers for filename, generator, palette, background, resolution, seed, and render time.
-9. The UI creates an object URL for preview and uses the API filename header for download.
+1. In development, the browser loads the React studio from the Vite dev server at `http://localhost:5173`.
+2. Vite proxies API calls such as `GET /api/generators` and `POST /api/generate` to the Express server on port 3000.
+3. In production, `pnpm run build` writes the frontend to `dist/`, and Express serves that build output.
+4. The React app requests generator metadata from `GET /api/generators`.
+5. Existing API callers can post JSON to `POST /api/generate`.
+6. `index.js` normalizes request fields and passes them to the shared generation core.
+7. `src/generation/validation.js` validates dimensions, detail, palette, background, seed, shape types, and generator ID.
+8. `src/generation/renderWallpaper.js` creates a canvas, paints the selected background, installs deterministic randomness for the render, invokes the selected generator, and returns a PNG buffer.
+9. The API returns image bytes directly with metadata headers for filename, generator, palette, background, resolution, seed, and render time.
 
 The API returns image bytes for normal browser previews so stale generated files do not accumulate. Direct programmatic generation can still pass an explicit `outputFile`; in that case the shared renderer writes the PNG to disk after rendering.
+
+## Frontend App
+
+The Vite entry point is root `index.html`, which loads `src/web/main.tsx`. The initial React studio is intentionally small: it renders a full-viewport workspace shell, loads generator metadata from the existing API, exposes a generator selector, shows API connection status, and reserves a preview workspace for later live rendering work.
+
+Development commands:
+
+- `pnpm run dev`: runs Express and Vite together.
+- `pnpm run dev:server`: runs only Express through `nodemon`.
+- `pnpm run dev:web`: runs only Vite with API proxying.
+- `pnpm run build`: builds the frontend to `dist/`.
+- `pnpm start`: serves the Express API and the built frontend from `dist/`.
 
 ## Server API
 

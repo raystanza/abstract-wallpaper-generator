@@ -5,11 +5,15 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "lint": "node --check index.js && find src public test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"pnpm run dev:server\" \"pnpm run dev:web\"",
+    "dev:server": "nodemon",
+    "dev:web": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "node --check index.js && find src test -name '*.js' -print0 | xargs -0 -n1 node --check",
     "format": "prettier --write .",
     "test": "node --test",
-    "verify": "pnpm run lint && pnpm test"
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run build && pnpm test"
   },
   "engines": {
     "node": ">=22.13.0"
@@ -20,12 +24,20 @@
   "dependencies": {
     "canvas": "^3.2.3",
     "express": "^4.19.2",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "sharp": "^0.33.5",
     "simplex-noise": "^4.0.1"
   },
   "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^10.0.0",
     "nodemon": "^3.1.7",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
   },
   "packageManager": "pnpm@11.4.0+sha512.f0febc7e37552ab485494a914241b338e0b3580b93d54ce31f00933015880863129038a1b4ae4e414a0ee63ac35bf21197e990172c4a68256450b5636310968f"
 }
