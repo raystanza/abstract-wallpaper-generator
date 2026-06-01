@@ -1,9 +1,41 @@
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Cpu,
+  Download,
+  ImageIcon,
+  PanelRight,
+  RefreshCcw,
+  Save,
+  Shuffle,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
+  BackgroundSpec,
   GenerationRequest,
   GeneratorMetadata,
+  GeneratorParameter,
+  ParameterOption,
   RenderMode,
 } from "../shared/contracts";
+import generatorSettings, {
+  type GeneratorSettings,
+} from "../shared/generatorSettings.mjs";
+import {
+  Button,
+  ColorSwatch,
+  IconButton,
+  InputField,
+  PanelHeader,
+  SegmentedControl,
+  SelectField,
+  SliderField,
+  StatusBadge,
+  Toggle,
+} from "./components/ui";
 import { getGenerators } from "./lib/apiClient";
 import {
   createPreviewRenderer,
@@ -13,9 +45,33 @@ import {
   type BrowserRendererCapabilities,
   type PreviewRenderer,
 } from "./rendering";
+import { getPreviewPalette } from "./rendering/palettes";
+
+const {
+  BACKGROUND_DIRECTIONS,
+  BACKGROUND_TYPES,
+  createDefaultGeneratorSettings,
+  createGenerationRequest,
+  normalizeBackground,
+  presetValueForSize,
+  resolutionPresets,
+  switchGeneratorSettings,
+  updateGeneratorParameter,
+  updateGeneratorSize,
+  validateGeneratorSettings,
+} = generatorSettings;
 
 type ApiStatus = "loading" | "ready" | "error";
 type PreviewStatus = "idle" | "rendering" | "ready" | "error";
+type ParameterGroupName = "generator" | "style" | "seed" | "advanced";
+
+const groupLabels: Record<ParameterGroupName, { eyebrow: string; title: string }> =
+  {
+    generator: { eyebrow: "Controls", title: "Generator" },
+    style: { eyebrow: "Look", title: "Style" },
+    seed: { eyebrow: "Seed", title: "Variation" },
+    advanced: { eyebrow: "Advanced", title: "Fine Tune" },
+  };
 
 function formatCategory(value: string) {
   return value
@@ -25,23 +81,100 @@ function formatCategory(value: string) {
     .join(" ");
 }
 
+function createSeed() {
+  const values = new Uint32Array(2);
+  crypto.getRandomValues(values);
+  return Array.from(values, (value) => value.toString(36)).join("-");
+}
+
+function statusTone(status: ApiStatus | PreviewStatus) {
+  if (status === "ready") {
+    return "success";
+  }
+
+  if (status === "error") {
+    return "danger";
+  }
+
+  if (status === "rendering" || status === "loading") {
+    return "warning";
+  }
+
+  return "neutral";
+}
+
+function optionLabel(options: ParameterOption[], value: string) {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function describeValue(parameter: GeneratorParameter, value: unknown) {
+  if (parameter.kind === "background") {
+    const background = normalizeBackground(value);
+    return `${formatCategory(background.type)} ${background.colors.join(" ")}`;
+  }
+
+  if (parameter.kind === "select") {
+    if (parameter.multiple) {
+      const values = Array.isArray(value) ? value : [];
+      return values
+        .slice(0, 3)
+        .map((entry) => optionLabel(parameter.options, String(entry)))
+        .join(", ");
+    }
+
+    return optionLabel(parameter.options, String(value));
+  }
+
+  if (parameter.kind === "palette") {
+    return optionLabel(parameter.options, String(value));
+  }
+
+  if (parameter.kind === "boolean") {
+    return value ? "On" : "Off";
+  }
+
+  if (parameter.kind === "color-array") {
+    return Array.isArray(value) ? value.join(" ") : "";
+  }
+
+  if (parameter.kind === "group") {
+    return `${parameter.children.length} controls`;
+  }
+
+  return String(value ?? "");
+}
+
+function getParameterValue(
+  settings: GeneratorSettings,
+  parameter: GeneratorParameter,
+) {
+  return settings.parameters[parameter.id] ?? parameter.defaultValue;
+}
+
+function numericValue(value: unknown, fallback: number) {
+  const nextValue = Number(value);
+  return Number.isFinite(nextValue) ? nextValue : fallback;
+}
+
+function getColorAt(background: BackgroundSpec, index: number) {
+  return background.colors[index] ?? background.colors[0] ?? "#101820";
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewRendererRef = useRef<PreviewRenderer | null>(null);
   const [generators, setGenerators] = useState<GeneratorMetadata[]>([]);
-  const [selectedGeneratorId, setSelectedGeneratorId] = useState("");
-  const [status, setStatus] = useState<ApiStatus>("loading");
-  const [statusMessage, setStatusMessage] = useState(
-    "Connecting to the generator API.",
-  );
+  const [settings, setSettings] = useState<GeneratorSettings | null>(null);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("loading");
+  const [apiMessage, setApiMessage] = useState("Connecting");
   const [capabilities, setCapabilities] =
     useState<BrowserRendererCapabilities | null>(null);
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
-  const [previewMessage, setPreviewMessage] = useState(
-    "Waiting for renderer capabilities.",
-  );
+  const [previewMessage, setPreviewMessage] = useState("Detecting renderer");
   const [activeMode, setActiveMode] = useState<RenderMode>("server-cpu");
   const [serverPreviewUrl, setServerPreviewUrl] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [copiedSeed, setCopiedSeed] = useState(false);
 
   useEffect(() => {
     setCapabilities(detectRendererCapabilities());
@@ -61,22 +194,23 @@ export default function App() {
           return;
         }
 
+        const firstGenerator = nextGenerators[0];
         setGenerators(nextGenerators);
-        setSelectedGeneratorId(nextGenerators[0]?.id ?? "");
-        setStatus("ready");
-        setStatusMessage(
-          `Connected to ${nextGenerators.length} generator${nextGenerators.length === 1 ? "" : "s"}.`,
+        setSettings(
+          firstGenerator
+            ? createDefaultGeneratorSettings(firstGenerator)
+            : null,
         );
+        setApiStatus("ready");
+        setApiMessage(`${nextGenerators.length} generators`);
       } catch (error) {
         if (!isCurrent) {
           return;
         }
 
-        setStatus("error");
-        setStatusMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to load generator metadata.",
+        setApiStatus("error");
+        setApiMessage(
+          error instanceof Error ? error.message : "API unavailable",
         );
       }
     }
@@ -88,12 +222,16 @@ export default function App() {
     };
   }, []);
 
-  const selectedGenerator = useMemo(
-    () =>
-      generators.find((generator) => generator.id === selectedGeneratorId) ??
-      generators[0],
-    [generators, selectedGeneratorId],
-  );
+  const selectedGenerator = useMemo(() => {
+    if (!settings) {
+      return generators[0];
+    }
+
+    return (
+      generators.find((generator) => generator.id === settings.generatorId) ??
+      generators[0]
+    );
+  }, [generators, settings]);
 
   const categories = useMemo(
     () =>
@@ -103,24 +241,54 @@ export default function App() {
     [generators],
   );
 
+  const groupedParameters = useMemo(() => {
+    const groups: Record<ParameterGroupName, GeneratorParameter[]> = {
+      generator: [],
+      style: [],
+      seed: [],
+      advanced: [],
+    };
+
+    for (const parameter of selectedGenerator?.parameters ?? []) {
+      if (
+        parameter.advanced ||
+        parameter.group === "advanced" ||
+        parameter.kind === "group"
+      ) {
+        groups.advanced.push(parameter);
+        continue;
+      }
+
+      if (
+        parameter.group === "generator" ||
+        parameter.group === "style" ||
+        parameter.group === "seed"
+      ) {
+        groups[parameter.group].push(parameter);
+      }
+    }
+
+    return groups;
+  }, [selectedGenerator]);
+
+  const validationMessages = useMemo(() => {
+    if (!settings || !selectedGenerator) {
+      return [];
+    }
+
+    return validateGeneratorSettings(settings, selectedGenerator);
+  }, [selectedGenerator, settings]);
+
   const previewRequest = useMemo<GenerationRequest | null>(() => {
-    if (!selectedGenerator) {
+    if (!settings || !selectedGenerator || validationMessages.length > 0) {
       return null;
     }
 
-    return {
-      width: 960,
-      height: 540,
-      shapes: selectedGenerator.defaults.shapes,
-      shapeTypes: selectedGenerator.defaults.shapeTypes,
-      colorPalette: selectedGenerator.defaults.colorPalette,
-      background: selectedGenerator.defaults.background,
-      generationType: selectedGenerator.id,
-      seed:
-        selectedGenerator.defaults.seed || `preview-${selectedGenerator.id}`,
-      options: selectedGenerator.defaults.options,
-    };
-  }, [selectedGenerator]);
+    return createGenerationRequest(settings, selectedGenerator, {
+      previewSize: { width: 960, height: 540 },
+      seedFallback: `preview-${selectedGenerator.id}`,
+    });
+  }, [selectedGenerator, settings, validationMessages.length]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -142,7 +310,7 @@ export default function App() {
 
     async function renderFallback(reason: string) {
       setPreviewStatus("rendering");
-      setPreviewMessage(`${reason} Rendering server preview.`);
+      setPreviewMessage(`${reason} Server render`);
       const result = await renderServerPreview(request);
       objectUrl = URL.createObjectURL(result.blob);
 
@@ -161,16 +329,16 @@ export default function App() {
       setActiveMode("server-cpu");
       setPreviewStatus("ready");
       setPreviewMessage(
-        `CPU/server fallback rendered in ${(result.metadata.elapsedMs ?? 0).toFixed(1)}ms.`,
+        `Server preview ${(result.metadata.elapsedMs ?? 0).toFixed(1)}ms`,
       );
     }
 
     async function renderPreview() {
       setPreviewStatus("rendering");
-      setPreviewMessage("Preparing preview renderer.");
+      setPreviewMessage("Preparing renderer");
 
       if (detectedCapabilities.preferredMode !== "webgl2") {
-        await renderFallback("WebGL2 preview is unavailable.");
+        await renderFallback("WebGL2 unavailable.");
         return;
       }
 
@@ -194,7 +362,7 @@ export default function App() {
         });
         setActiveMode("webgl2");
         setPreviewStatus("ready");
-        setPreviewMessage("GPU preview active.");
+        setPreviewMessage("GPU preview active");
       } catch (error) {
         previewRendererRef.current?.dispose();
         previewRendererRef.current = null;
@@ -205,8 +373,8 @@ export default function App() {
 
         await renderFallback(
           error instanceof Error
-            ? `GPU preview failed: ${error.message}.`
-            : "GPU preview failed.",
+            ? `GPU failed: ${error.message}.`
+            : "GPU failed.",
         );
       }
     }
@@ -218,7 +386,7 @@ export default function App() {
 
       setPreviewStatus("error");
       setPreviewMessage(
-        error instanceof Error ? error.message : "Preview rendering failed.",
+        error instanceof Error ? error.message : "Preview failed",
       );
     });
 
@@ -233,147 +401,683 @@ export default function App() {
     };
   }, [capabilities, previewRequest]);
 
-  return (
-    <main className="studio-shell" aria-labelledby="app-title">
-      <aside className="studio-sidebar" aria-label="Generator setup">
-        <header className="studio-brand">
-          <p className="eyebrow">Creator Studio</p>
-          <h1 id="app-title">Abstract Wallpaper Generator</h1>
-        </header>
+  function mutateSettings(
+    updater: (
+      currentSettings: GeneratorSettings,
+      currentGenerator: GeneratorMetadata,
+    ) => GeneratorSettings,
+  ) {
+    setSettings((currentSettings) => {
+      if (!currentSettings) {
+        return currentSettings;
+      }
 
-        <section className="control-group" aria-labelledby="generator-heading">
-          <div className="section-title-row">
-            <h2 id="generator-heading">Generator</h2>
-            <span className={`status-pill status-pill--${status}`}>
-              {status}
-            </span>
-          </div>
+      const currentGenerator = generators.find(
+        (generator) => generator.id === currentSettings.generatorId,
+      );
 
-          <label htmlFor="generator-select">Algorithm</label>
-          <select
-            id="generator-select"
-            value={selectedGeneratorId}
-            onChange={(event) => setSelectedGeneratorId(event.target.value)}
-            disabled={generators.length === 0}
-          >
-            {generators.length === 0 ? (
-              <option value="">Loading generators</option>
-            ) : (
-              generators.map((generator) => (
-                <option key={generator.id} value={generator.id}>
-                  {generator.name}
-                </option>
-              ))
-            )}
-          </select>
+      return currentGenerator
+        ? updater(currentSettings, currentGenerator)
+        : currentSettings;
+    });
+  }
 
-          <p className="field-note" aria-live="polite">
-            {selectedGenerator?.description ??
-              "Generator metadata will appear here when the API responds."}
-          </p>
-        </section>
+  function handleGeneratorChange(generatorId: string) {
+    const nextGenerator = generators.find(
+      (generator) => generator.id === generatorId,
+    );
 
-        <section className="control-group" aria-labelledby="canvas-heading">
-          <h2 id="canvas-heading">Canvas</h2>
-          <div className="metric-grid">
-            <div>
-              <span className="metric-label">Resolution</span>
-              <strong>1920 x 1080</strong>
-            </div>
-            <div>
-              <span className="metric-label">Seed</span>
-              <strong>Auto</strong>
-            </div>
-          </div>
-        </section>
+    if (!nextGenerator) {
+      return;
+    }
 
-        <section className="control-group" aria-labelledby="api-heading">
-          <h2 id="api-heading">API Status</h2>
-          <p className="status-copy" role="status">
-            {statusMessage}
-          </p>
-        </section>
+    setAdvancedOpen(false);
+    setSettings((currentSettings) =>
+      currentSettings
+        ? switchGeneratorSettings(currentSettings, nextGenerator)
+        : createDefaultGeneratorSettings(nextGenerator),
+    );
+  }
 
-        <section className="control-group" aria-labelledby="renderer-heading">
-          <div className="section-title-row">
-            <h2 id="renderer-heading">Renderer</h2>
-            <span className={`status-pill status-pill--${previewStatus}`}>
-              {rendererModeLabel(activeMode)}
-            </span>
-          </div>
-          <p className="status-copy" role="status">
-            {previewMessage}
-          </p>
-          <dl className="diagnostics-list" aria-label="Renderer diagnostics">
-            {(capabilities?.diagnostics ?? ["Detecting renderer."]).map(
-              (detail) => (
-                <div key={detail}>
-                  <dt>{detail}</dt>
-                </div>
-              ),
-            )}
-          </dl>
-        </section>
-      </aside>
+  function handlePresetChange(value: string) {
+    const preset = resolutionPresets.find((entry) => entry.value === value);
 
-      <section className="preview-workspace" aria-label="Wallpaper preview">
-        <div className="preview-toolbar">
-          <div>
-            <p className="eyebrow">Preview</p>
-            <h2>{selectedGenerator?.name ?? "Waiting for API"}</h2>
-          </div>
-          <div className="toolbar-meta" aria-label="Generator summary">
-            <span>{generators.length} generators</span>
-            <span>{categories.length} categories</span>
-          </div>
-        </div>
+    if (!preset) {
+      return;
+    }
 
-        <div className="preview-stage">
-          <canvas
-            ref={canvasRef}
-            className="preview-render-canvas"
-            aria-label="Hardware accelerated abstract wallpaper preview"
+    mutateSettings((currentSettings, currentGenerator) =>
+      updateGeneratorSize(currentSettings, currentGenerator, {
+        width: preset.width,
+        height: preset.height,
+      }),
+    );
+  }
+
+  function handleSizeChange(dimension: "width" | "height", value: string) {
+    mutateSettings((currentSettings, currentGenerator) =>
+      updateGeneratorSize(currentSettings, currentGenerator, {
+        width: dimension === "width" ? value : currentSettings.width,
+        height: dimension === "height" ? value : currentSettings.height,
+      }),
+    );
+  }
+
+  function handleParameterChange(parameterId: string, value: unknown) {
+    mutateSettings((currentSettings, currentGenerator) =>
+      updateGeneratorParameter(
+        currentSettings,
+        currentGenerator,
+        parameterId,
+        value,
+      ),
+    );
+  }
+
+  function handleShuffleSeed() {
+    if (!settings?.seedLocked) {
+      handleParameterChange("seed", createSeed());
+    }
+  }
+
+  async function handleCopySeed() {
+    const seedValue = settings?.seed || previewRequest?.seed || "";
+
+    if (!seedValue || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(seedValue);
+    setCopiedSeed(true);
+    window.setTimeout(() => setCopiedSeed(false), 1200);
+  }
+
+  function renderBackgroundControl(parameter: GeneratorParameter) {
+    if (!settings || parameter.kind !== "background") {
+      return null;
+    }
+
+    const background = normalizeBackground(getParameterValue(settings, parameter));
+    const colorCount = background.type === "solid" ? 1 : 2;
+
+    function updateBackground(nextBackground: Partial<BackgroundSpec>) {
+      handleParameterChange(
+        parameter.id,
+        normalizeBackground({
+          ...background,
+          ...nextBackground,
+        }),
+      );
+    }
+
+    return (
+      <div className="parameter-control" key={parameter.id}>
+        <SelectField
+          label={parameter.label}
+          onChange={(value) =>
+            updateBackground({
+              type: value as BackgroundSpec["type"],
+            })
+          }
+          options={BACKGROUND_TYPES.map((type) => ({
+            label: formatCategory(type),
+            value: type,
+          }))}
+          value={background.type}
+        />
+        {background.type !== "solid" ? (
+          <SelectField
+            label="Direction"
+            onChange={(value) =>
+              updateBackground({
+                direction: value as BackgroundSpec["direction"],
+              })
+            }
+            options={BACKGROUND_DIRECTIONS.map((direction) => ({
+              label: formatCategory(direction),
+              value: direction,
+            }))}
+            value={background.direction}
           />
-          {serverPreviewUrl ? (
-            <img
-              className="preview-render-image"
-              src={serverPreviewUrl}
-              alt="Server-rendered abstract wallpaper preview"
+        ) : null}
+        <div className="background-color-row">
+          {Array.from({ length: colorCount }, (_, index) => (
+            <InputField
+              className="control--color"
+              key={`${parameter.id}-${index}`}
+              label={colorCount === 1 ? "Color" : `Color ${index + 1}`}
+              onChange={(value) => {
+                const colors = [...background.colors];
+                colors[index] = value;
+                updateBackground({ colors });
+              }}
+              type="color"
+              value={getColorAt(background, index)}
             />
-          ) : null}
-          <div className="preview-details">
-            <span className="category-label">
-              {selectedGenerator
-                ? formatCategory(selectedGenerator.category)
-                : "No category"}
-            </span>
-            <h3>{selectedGenerator?.name ?? "No generator selected"}</h3>
-            <p>
-              {previewStatus === "ready"
-                ? previewMessage
-                : "The preview layer detects browser GPU support and falls back to server rendering when needed."}
-            </p>
-          </div>
+          ))}
         </div>
+      </div>
+    );
+  }
 
-        <div className="metadata-strip" aria-label="Selected generator details">
-          <div>
-            <span>ID</span>
-            <strong>{selectedGenerator?.id ?? "none"}</strong>
-          </div>
-          <div>
-            <span>Category</span>
-            <strong>
-              {selectedGenerator
-                ? formatCategory(selectedGenerator.category)
-                : "none"}
-            </strong>
-          </div>
-          <div>
-            <span>Controls</span>
-            <strong>{selectedGenerator?.parameters.length ?? 0}</strong>
+  function renderParameterControl(parameter: GeneratorParameter) {
+    if (!settings) {
+      return null;
+    }
+
+    if (parameter.kind === "group") {
+      return (
+        <div className="parameter-control" key={parameter.id}>
+          <h3 className="section-caption">{parameter.label}</h3>
+          {parameter.children.map(renderParameterControl)}
+        </div>
+      );
+    }
+
+    const value = getParameterValue(settings, parameter);
+
+    if (parameter.kind === "number") {
+      const nextValue = numericValue(value, parameter.defaultValue);
+
+      return (
+        <div className="parameter-control" key={parameter.id}>
+          <SliderField
+            label={parameter.label}
+            max={parameter.max}
+            min={parameter.min}
+            onChange={(nextValue) =>
+              handleParameterChange(parameter.id, nextValue)
+            }
+            step={parameter.step}
+            value={nextValue}
+          />
+          <InputField
+            hint={`${parameter.min}-${parameter.max}`}
+            label={`${parameter.label} value`}
+            max={parameter.max}
+            min={parameter.min}
+            onChange={(nextInput) =>
+              handleParameterChange(parameter.id, nextInput)
+            }
+            step={parameter.step}
+            type="number"
+            value={nextValue}
+          />
+        </div>
+      );
+    }
+
+    if (parameter.kind === "boolean") {
+      return (
+        <Toggle
+          checked={Boolean(value)}
+          key={parameter.id}
+          label={parameter.label}
+          onChange={(checked) => handleParameterChange(parameter.id, checked)}
+        />
+      );
+    }
+
+    if (parameter.kind === "select") {
+      if (parameter.multiple) {
+        const selectedValues = new Set(
+          Array.isArray(value) ? value.map(String) : [],
+        );
+
+        return (
+          <fieldset className="multi-option" key={parameter.id}>
+            <legend>{parameter.label}</legend>
+            <div className="multi-option__grid">
+              {parameter.options.map((option) => {
+                const selected = selectedValues.has(option.value);
+                return (
+                  <button
+                    aria-pressed={selected}
+                    className="chip-button"
+                    key={option.value}
+                    onClick={() => {
+                      const nextValues = selected
+                        ? Array.from(selectedValues).filter(
+                            (entry) => entry !== option.value,
+                          )
+                        : [...Array.from(selectedValues), option.value];
+                      handleParameterChange(parameter.id, nextValues);
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        );
+      }
+
+      if (parameter.options.length <= 4) {
+        return (
+          <SegmentedControl
+            key={parameter.id}
+            label={parameter.label}
+            onChange={(nextValue) =>
+              handleParameterChange(parameter.id, nextValue)
+            }
+            options={parameter.options}
+            value={String(value)}
+          />
+        );
+      }
+
+      return (
+        <SelectField
+          key={parameter.id}
+          label={parameter.label}
+          onChange={(nextValue) =>
+            handleParameterChange(parameter.id, nextValue)
+          }
+          options={parameter.options}
+          value={String(value)}
+        />
+      );
+    }
+
+    if (parameter.kind === "palette") {
+      const paletteName = String(value);
+      const previewPalette = getPreviewPalette(paletteName);
+
+      return (
+        <div className="parameter-control" key={parameter.id}>
+          <SelectField
+            label={parameter.label}
+            onChange={(nextValue) =>
+              handleParameterChange(parameter.id, nextValue)
+            }
+            options={parameter.options}
+            value={paletteName}
+          />
+          <div className="swatch-row" aria-label="Selected palette swatches">
+            {previewPalette.map((color) => (
+              <ColorSwatch color={color} key={color} label={color} />
+            ))}
           </div>
         </div>
+      );
+    }
+
+    if (parameter.kind === "background") {
+      return renderBackgroundControl(parameter);
+    }
+
+    if (parameter.kind === "color") {
+      return (
+        <InputField
+          className="control--color"
+          key={parameter.id}
+          label={parameter.label}
+          onChange={(nextValue) =>
+            handleParameterChange(parameter.id, nextValue)
+          }
+          type="color"
+          value={String(value)}
+        />
+      );
+    }
+
+    if (parameter.kind === "color-array") {
+      const colors = Array.isArray(value) ? value.map(String) : [];
+
+      return (
+        <div className="parameter-control" key={parameter.id}>
+          <h3 className="section-caption">{parameter.label}</h3>
+          <div className="background-color-row">
+            {colors.map((color, index) => (
+              <InputField
+                className="control--color"
+                key={`${parameter.id}-${index}`}
+                label={`Color ${index + 1}`}
+                onChange={(nextValue) => {
+                  const nextColors = [...colors];
+                  nextColors[index] = nextValue;
+                  handleParameterChange(parameter.id, nextColors);
+                }}
+                type="color"
+                value={color}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (parameter.id === "seed") {
+      return (
+        <div className="parameter-control" key={parameter.id}>
+          <div className="seed-control-row">
+            <InputField
+              hint="Max 128 characters"
+              label={parameter.label}
+              onChange={(nextValue) =>
+                handleParameterChange(parameter.id, nextValue)
+              }
+              placeholder="Auto"
+              value={settings.seed}
+            />
+            <IconButton
+              disabled={settings.seedLocked}
+              icon={Shuffle}
+              label="Randomize seed"
+              onClick={handleShuffleSeed}
+              variant="secondary"
+            />
+            <IconButton
+              disabled={!settings.seed && !previewRequest?.seed}
+              icon={Copy}
+              label={copiedSeed ? "Seed copied" : "Copy seed"}
+              onClick={() => void handleCopySeed()}
+              variant="secondary"
+            />
+          </div>
+          <Toggle
+            checked={settings.seedLocked}
+            label="Lock seed"
+            onChange={(checked) =>
+              setSettings((currentSettings) =>
+                currentSettings
+                  ? { ...currentSettings, seedLocked: checked }
+                  : currentSettings,
+              )
+            }
+          />
+        </div>
+      );
+    }
+
+    return (
+      <InputField
+        key={parameter.id}
+        label={parameter.label}
+        maxLength={parameter.maxLength}
+        onChange={(nextValue) => handleParameterChange(parameter.id, nextValue)}
+        value={String(value)}
+      />
+    );
+  }
+
+  const rendererTone = activeMode === "webgl2" ? "success" : "warning";
+  const selectedGeneratorId = settings?.generatorId ?? "";
+  const selectedCategory = selectedGenerator
+    ? formatCategory(selectedGenerator.category)
+    : "None";
+  const selectedParameterCount = selectedGenerator?.parameters.length ?? 0;
+  const presetValue = settings
+    ? presetValueForSize(settings.width, settings.height)
+    : "custom";
+
+  return (
+    <main className="app-frame" aria-labelledby="app-title">
+      <header className="top-toolbar">
+        <div className="project-heading">
+          <ImageIcon aria-hidden="true" size={20} strokeWidth={2.2} />
+          <div>
+            <p className="eyebrow">Wallpaper Studio</p>
+            <h1 id="app-title">Abstract Generator</h1>
+          </div>
+        </div>
+        <div className="toolbar-cluster" aria-label="Project actions">
+          <StatusBadge tone={statusTone(apiStatus)}>{apiMessage}</StatusBadge>
+          <IconButton icon={Save} label="Save project" />
+          <Button disabled icon={Download} variant="primary">
+            Export
+          </Button>
+        </div>
+      </header>
+
+      <section
+        className="studio-layout"
+        aria-label="Wallpaper creator workspace"
+      >
+        <aside
+          className="studio-panel studio-panel--settings"
+          aria-label="Generator settings"
+        >
+          <PanelHeader eyebrow="Setup" title="Generator" />
+          <div className="panel-section">
+            <SelectField
+              disabled={generators.length === 0}
+              label="Algorithm"
+              onChange={handleGeneratorChange}
+              options={
+                generators.length
+                  ? generators.map((generator) => ({
+                      label: `${generator.name} (${formatCategory(
+                        generator.category,
+                      )})`,
+                      value: generator.id,
+                    }))
+                  : [{ label: "Loading", value: "" }]
+              }
+              value={selectedGeneratorId}
+            />
+            <p className="field-note">
+              {selectedGenerator?.description ?? "Loading metadata"}
+            </p>
+            <div className="generator-tags">
+              <StatusBadge>{selectedCategory}</StatusBadge>
+              <StatusBadge>{selectedParameterCount} controls</StatusBadge>
+              <StatusBadge>{categories.length} categories</StatusBadge>
+            </div>
+          </div>
+
+          <div className="panel-section">
+            <PanelHeader eyebrow="Canvas" title="Output" />
+            <SegmentedControl
+              label="Preset"
+              onChange={handlePresetChange}
+              options={resolutionPresets.map((preset) => ({
+                label: preset.label,
+                value: preset.value,
+              }))}
+              value={presetValue}
+            />
+            <div className="field-grid field-grid--two">
+              <InputField
+                hint="128-7680"
+                label="Width"
+                max={7680}
+                min={128}
+                onChange={(value) => handleSizeChange("width", value)}
+                type="number"
+                value={settings?.width ?? 1920}
+              />
+              <InputField
+                hint="128-4320"
+                label="Height"
+                max={4320}
+                min={128}
+                onChange={(value) => handleSizeChange("height", value)}
+                type="number"
+                value={settings?.height ?? 1080}
+              />
+            </div>
+            {validationMessages.length > 0 ? (
+              <ul className="validation-list" aria-label="Validation messages">
+                {validationMessages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            ) : (
+              <StatusBadge tone="success">Request ready</StatusBadge>
+            )}
+          </div>
+
+          {(["generator", "style"] as const).map((groupName) =>
+            groupedParameters[groupName].length > 0 ? (
+              <div className="panel-section" key={groupName}>
+                <PanelHeader
+                  eyebrow={groupLabels[groupName].eyebrow}
+                  title={groupLabels[groupName].title}
+                />
+                {groupedParameters[groupName].map(renderParameterControl)}
+              </div>
+            ) : null,
+          )}
+
+          {groupedParameters.advanced.length > 0 ? (
+            <div className="panel-section">
+              <Button
+                className="advanced-toggle"
+                icon={advancedOpen ? ChevronUp : ChevronDown}
+                onClick={() => setAdvancedOpen((open) => !open)}
+                variant="ghost"
+              >
+                {advancedOpen ? "Hide advanced" : "Show advanced"}
+              </Button>
+              {advancedOpen ? (
+                <div className="advanced-controls">
+                  {groupedParameters.advanced.map(renderParameterControl)}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {groupedParameters.seed.length > 0 ? (
+            <div className="panel-section">
+              <PanelHeader
+                eyebrow={groupLabels.seed.eyebrow}
+                title={groupLabels.seed.title}
+              />
+              {groupedParameters.seed.map(renderParameterControl)}
+            </div>
+          ) : null}
+        </aside>
+
+        <section className="preview-region" aria-label="Wallpaper preview">
+          <div className="preview-header-bar">
+            <div>
+              <p className="eyebrow">Preview</p>
+              <h2>{selectedGenerator?.name ?? "No generator"}</h2>
+            </div>
+            <div className="preview-actions">
+              <StatusBadge tone={rendererTone}>
+                {rendererModeLabel(activeMode)}
+              </StatusBadge>
+              <IconButton
+                icon={RefreshCcw}
+                label="Refresh preview"
+                onClick={handleShuffleSeed}
+              />
+            </div>
+          </div>
+
+          <div className="preview-stage">
+            <canvas
+              ref={canvasRef}
+              className="preview-render-canvas"
+              aria-label="Wallpaper preview canvas"
+            />
+            {serverPreviewUrl ? (
+              <img
+                className="preview-render-image"
+                src={serverPreviewUrl}
+                alt="Server-rendered abstract wallpaper preview"
+              />
+            ) : null}
+            <div className="preview-overlay">
+              <StatusBadge tone={statusTone(previewStatus)}>
+                {previewMessage}
+              </StatusBadge>
+            </div>
+          </div>
+
+          <footer className="status-bar">
+            <span>
+              {settings?.width ?? 1920} x {settings?.height ?? 1080}
+            </span>
+            <span>{settings?.palette ?? "mixed"}</span>
+            <span>{settings?.seed || "auto seed"}</span>
+          </footer>
+        </section>
+
+        <aside
+          className="studio-panel studio-panel--inspector"
+          aria-label="Inspector"
+        >
+          <PanelHeader
+            actions={<IconButton icon={PanelRight} label="Inspector" />}
+            eyebrow="Inspector"
+            title="Details"
+          />
+
+          <div className="panel-section">
+            <h3 className="section-caption">Renderer</h3>
+            <div className="metric-list">
+              <div>
+                <span>Mode</span>
+                <strong>
+                  {activeMode === "webgl2" ? "WebGL2" : "Server CPU"}
+                </strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong>{previewStatus}</strong>
+              </div>
+              <div>
+                <span>WebGPU</span>
+                <strong>
+                  {capabilities?.webgpu.available ? "Detected" : "Unavailable"}
+                </strong>
+              </div>
+            </div>
+            <dl className="diagnostics-list" aria-label="Renderer diagnostics">
+              {(capabilities?.diagnostics ?? ["Detecting renderer"]).map(
+                (detail) => (
+                  <div key={detail}>
+                    <dt>{detail}</dt>
+                  </div>
+                ),
+              )}
+            </dl>
+          </div>
+
+          <div className="panel-section">
+            <h3 className="section-caption">Parameters</h3>
+            <div className="parameter-list">
+              {(selectedGenerator?.parameters ?? []).map((parameter) => (
+                <div className="parameter-row" key={parameter.id}>
+                  <span>{parameter.label}</span>
+                  <strong>
+                    {settings
+                      ? describeValue(
+                          parameter,
+                          getParameterValue(settings, parameter),
+                        )
+                      : parameter.kind}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel-section">
+            <h3 className="section-caption">Render Path</h3>
+            <div className="render-path">
+              <div>
+                <Zap aria-hidden="true" size={16} />
+                <span>
+                  {activeMode === "webgl2" ? "GPU preview" : "GPU bypassed"}
+                </span>
+              </div>
+              <div>
+                <Cpu aria-hidden="true" size={16} />
+                <span>Server export</span>
+              </div>
+              <div>
+                <Sparkles aria-hidden="true" size={16} />
+                <span>{selectedGenerator?.category ?? "generator"}</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </section>
     </main>
   );

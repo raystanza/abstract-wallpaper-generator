@@ -38,6 +38,7 @@ export type BaseGeneratorParameter = {
   description?: string;
   group: ParameterGroup;
   advanced: boolean;
+  scope?: "request" | "options";
   defaultValue?: unknown;
   type?: string;
 };

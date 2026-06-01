@@ -18,7 +18,19 @@ The API returns image bytes for normal browser previews so stale generated files
 
 ## Frontend App
 
-The Vite entry point is root `index.html`, which loads `src/web/main.tsx`. The initial React studio is intentionally small: it renders a full-viewport workspace shell, loads generator metadata from the existing API, exposes a generator selector, shows API connection status, and reserves a preview workspace for later live rendering work.
+The Vite entry point is root `index.html`, which loads `src/web/main.tsx`. The React studio opens directly into the creator workspace.
+
+Primary UI regions:
+
+- Top toolbar: project identity, API status, save/export actions.
+- Left settings panel: generator selection, canvas settings, dynamic generator controls, palette/background controls, and seed controls.
+- Main preview region: WebGL2 or server-rendered preview, refresh action, and compact output status.
+- Right inspector: renderer diagnostics, selected generator parameter values, and render-path details.
+- Status bar: current output size, palette, and seed.
+
+Local app-owned primitives live in `src/web/components/ui.tsx` and include buttons, icon buttons, fields, sliders, toggles, segmented controls, swatches, panel headers, and status badges. Styling tokens and responsive layout rules live in `src/web/styles/app.css`.
+
+Generator control state is resolved through `src/shared/generatorSettings.js` with TypeScript declarations in `src/shared/generatorSettings.d.ts`. The settings object is serializable and contains the selected generator, size, seed, palette, background, render mode, and parameter values. The helper layer resolves defaults from metadata, preserves compatible values during generator switches, clamps impossible sizes and numeric parameters, and creates the `GenerationRequest` sent to preview/export paths.
 
 Development commands:
 
@@ -241,6 +253,37 @@ Parameters use a `kind` field so the React studio can render controls dynamicall
 - `group`: can hold child parameters for advanced controls in later prompts.
 
 Current top-level request fields such as `shapes`, `shapeTypes`, `colorPalette`, `background`, and `seed` remain compatible with older API callers. Generator-specific values under `options` are now validated against the shared parameter model, and unsupported option keys are rejected.
+
+When adding a parameter to a generator, prefer metadata over custom UI. For example, a generator-level numeric control:
+
+```js
+{
+  id: "turbulence",
+  label: "Turbulence",
+  type: "number",
+  min: 0,
+  max: 100,
+  step: 1,
+  defaultValue: 35,
+  group: "generator"
+}
+```
+
+A compact advanced option can be scoped for future `options` request payloads:
+
+```js
+{
+  id: "glow",
+  label: "Glow",
+  type: "boolean",
+  defaultValue: true,
+  group: "advanced",
+  advanced: true,
+  scope: "options"
+}
+```
+
+Palette, background, seed, density, and shape type controls are rendered from the same metadata model. Only introduce a custom React component when the control needs behavior that cannot be represented by `number`, `boolean`, `select`, `palette`, `background`, `color`, `color-array`, or grouped advanced parameters.
 
 Each render function receives the canvas context and one options object:
 

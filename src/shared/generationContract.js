@@ -99,6 +99,7 @@ function normalizeParameter(parameter, context = {}) {
     description: parameter.description,
     group: groupForParameter(parameter),
     advanced: Boolean(parameter.advanced),
+    scope: parameter.scope || "request",
     type: parameter.type,
   };
 
