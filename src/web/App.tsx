@@ -19,7 +19,6 @@ import type {
   GeneratorMetadata,
   GeneratorParameter,
   ParameterOption,
-  RenderMode,
 } from "../shared/contracts";
 import generatorSettings, {
   type GeneratorSettings,
@@ -37,15 +36,9 @@ import {
   Toggle,
 } from "./components/ui";
 import { getGenerators } from "./lib/apiClient";
-import {
-  createPreviewRenderer,
-  detectRendererCapabilities,
-  renderServerPreview,
-  rendererModeLabel,
-  type BrowserRendererCapabilities,
-  type PreviewRenderer,
-} from "./rendering";
+import { rendererModeLabel } from "./rendering";
 import { getPreviewPalette } from "./rendering/palettes";
+import { useWallpaperPreview } from "./rendering/useWallpaperPreview";
 
 const {
   BACKGROUND_DIRECTIONS,
@@ -62,7 +55,7 @@ const {
 } = generatorSettings;
 
 type ApiStatus = "loading" | "ready" | "error";
-type PreviewStatus = "idle" | "rendering" | "ready" | "error";
+type PreviewStatus = "idle" | "rendering" | "ready" | "fallback" | "error";
 type ParameterGroupName = "generator" | "style" | "seed" | "advanced";
 
 const groupLabels: Record<ParameterGroupName, { eyebrow: string; title: string }> =
@@ -96,7 +89,7 @@ function statusTone(status: ApiStatus | PreviewStatus) {
     return "danger";
   }
 
-  if (status === "rendering" || status === "loading") {
+  if (status === "fallback" || status === "rendering" || status === "loading") {
     return "warning";
   }
 
@@ -162,23 +155,14 @@ function getColorAt(background: BackgroundSpec, index: number) {
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const previewRendererRef = useRef<PreviewRenderer | null>(null);
   const [generators, setGenerators] = useState<GeneratorMetadata[]>([]);
   const [settings, setSettings] = useState<GeneratorSettings | null>(null);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("loading");
   const [apiMessage, setApiMessage] = useState("Connecting");
-  const [capabilities, setCapabilities] =
-    useState<BrowserRendererCapabilities | null>(null);
-  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
-  const [previewMessage, setPreviewMessage] = useState("Detecting renderer");
-  const [activeMode, setActiveMode] = useState<RenderMode>("server-cpu");
-  const [serverPreviewUrl, setServerPreviewUrl] = useState<string | null>(null);
+  const [autoPreview, setAutoPreview] = useState(true);
+  const [forceServerPreview, setForceServerPreview] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [copiedSeed, setCopiedSeed] = useState(false);
-
-  useEffect(() => {
-    setCapabilities(detectRendererCapabilities());
-  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -290,116 +274,22 @@ export default function App() {
     });
   }, [selectedGenerator, settings, validationMessages.length]);
 
-  useEffect(() => {
-    let isCurrent = true;
-    let objectUrl: string | null = null;
-    const canvas = canvasRef.current;
-
-    previewRendererRef.current?.dispose();
-    previewRendererRef.current = null;
-
-    if (!canvas || !capabilities || !previewRequest) {
-      return () => {
-        isCurrent = false;
-      };
-    }
-
-    const targetCanvas = canvas;
-    const detectedCapabilities = capabilities;
-    const request = previewRequest;
-
-    async function renderFallback(reason: string) {
-      setPreviewStatus("rendering");
-      setPreviewMessage(`${reason} Server render`);
-      const result = await renderServerPreview(request);
-      objectUrl = URL.createObjectURL(result.blob);
-
-      if (!isCurrent) {
-        URL.revokeObjectURL(objectUrl);
-        return;
-      }
-
-      setServerPreviewUrl((currentUrl) => {
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl);
-        }
-
-        return objectUrl;
-      });
-      setActiveMode("server-cpu");
-      setPreviewStatus("ready");
-      setPreviewMessage(
-        `Server preview ${(result.metadata.elapsedMs ?? 0).toFixed(1)}ms`,
-      );
-    }
-
-    async function renderPreview() {
-      setPreviewStatus("rendering");
-      setPreviewMessage("Preparing renderer");
-
-      if (detectedCapabilities.preferredMode !== "webgl2") {
-        await renderFallback("WebGL2 unavailable.");
-        return;
-      }
-
-      try {
-        const renderer = createPreviewRenderer(targetCanvas, {
-          capabilities: detectedCapabilities,
-        });
-        previewRendererRef.current = renderer;
-        await renderer.renderPreview(request);
-
-        if (!isCurrent) {
-          return;
-        }
-
-        setServerPreviewUrl((currentUrl) => {
-          if (currentUrl) {
-            URL.revokeObjectURL(currentUrl);
-          }
-
-          return null;
-        });
-        setActiveMode("webgl2");
-        setPreviewStatus("ready");
-        setPreviewMessage("GPU preview active");
-      } catch (error) {
-        previewRendererRef.current?.dispose();
-        previewRendererRef.current = null;
-
-        if (!isCurrent) {
-          return;
-        }
-
-        await renderFallback(
-          error instanceof Error
-            ? `GPU failed: ${error.message}.`
-            : "GPU failed.",
-        );
-      }
-    }
-
-    renderPreview().catch((error) => {
-      if (!isCurrent) {
-        return;
-      }
-
-      setPreviewStatus("error");
-      setPreviewMessage(
-        error instanceof Error ? error.message : "Preview failed",
-      );
-    });
-
-    return () => {
-      isCurrent = false;
-      previewRendererRef.current?.dispose();
-      previewRendererRef.current = null;
-
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [capabilities, previewRequest]);
+  const {
+    activeMode,
+    capabilities,
+    imageUrl: serverPreviewUrl,
+    message: previewMessage,
+    metrics: previewMetrics,
+    pendingManualRender,
+    refreshPreview,
+    status: previewStatus,
+  } = useWallpaperPreview({
+    autoPreview,
+    canvasRef,
+    forceServer: forceServerPreview,
+    generator: selectedGenerator,
+    request: previewRequest,
+  });
 
   function mutateSettings(
     updater: (
@@ -803,7 +693,12 @@ export default function App() {
     );
   }
 
-  const rendererTone = activeMode === "webgl2" ? "success" : "warning";
+  const rendererTone =
+    previewStatus === "fallback"
+      ? "warning"
+      : activeMode === "webgl2"
+        ? "success"
+        : "warning";
   const selectedGeneratorId = settings?.generatorId ?? "";
   const selectedCategory = selectedGenerator
     ? formatCategory(selectedGenerator.category)
@@ -958,12 +853,29 @@ export default function App() {
               <h2>{selectedGenerator?.name ?? "No generator"}</h2>
             </div>
             <div className="preview-actions">
+              <Toggle
+                checked={autoPreview}
+                label="Auto"
+                onChange={setAutoPreview}
+              />
+              <Toggle
+                checked={forceServerPreview}
+                label="Server"
+                onChange={setForceServerPreview}
+              />
               <StatusBadge tone={rendererTone}>
                 {rendererModeLabel(activeMode)}
               </StatusBadge>
-              <IconButton
+              <Button
                 icon={RefreshCcw}
-                label="Refresh preview"
+                onClick={refreshPreview}
+                variant={pendingManualRender ? "primary" : "secondary"}
+              >
+                {autoPreview ? "Refresh" : "Render preview"}
+              </Button>
+              <IconButton
+                icon={Shuffle}
+                label="Randomize seed"
                 onClick={handleShuffleSeed}
               />
             </div>
@@ -990,11 +902,14 @@ export default function App() {
           </div>
 
           <footer className="status-bar">
+            <span>{previewMetrics.resolution || "960 x 540"}</span>
+            <span>{activeMode === "webgl2" ? "GPU" : "server"}</span>
             <span>
-              {settings?.width ?? 1920} x {settings?.height ?? 1080}
+              {previewMetrics.elapsedMs === null
+                ? "pending"
+                : `${previewMetrics.elapsedMs}ms`}
             </span>
-            <span>{settings?.palette ?? "mixed"}</span>
-            <span>{settings?.seed || "auto seed"}</span>
+            <span>{previewMetrics.seed || settings?.seed || "auto seed"}</span>
           </footer>
         </section>
 
@@ -1022,10 +937,24 @@ export default function App() {
                 <strong>{previewStatus}</strong>
               </div>
               <div>
-                <span>WebGPU</span>
+                <span>Time</span>
                 <strong>
-                  {capabilities?.webgpu.available ? "Detected" : "Unavailable"}
+                  {previewMetrics.elapsedMs === null
+                    ? "Pending"
+                    : `${previewMetrics.elapsedMs}ms`}
                 </strong>
+              </div>
+              <div>
+                <span>Resolution</span>
+                <strong>{previewMetrics.resolution || "960 x 540"}</strong>
+              </div>
+              <div>
+                <span>Seed</span>
+                <strong>{previewMetrics.seed || "Auto"}</strong>
+              </div>
+              <div>
+                <span>Auto</span>
+                <strong>{autoPreview ? "On" : "Off"}</strong>
               </div>
             </div>
             <dl className="diagnostics-list" aria-label="Renderer diagnostics">

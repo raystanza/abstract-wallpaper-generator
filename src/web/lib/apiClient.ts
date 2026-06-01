@@ -78,6 +78,7 @@ export async function getGenerators(): Promise<GeneratorResponse> {
 
 export async function generateWallpaper(
   request: GenerationRequest,
+  options: { signal?: AbortSignal } = {},
 ): Promise<GenerateWallpaperResponse> {
   const response = await fetch("/api/generate", {
     method: "POST",
@@ -85,6 +86,7 @@ export async function generateWallpaper(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(request),
+    signal: options.signal,
   });
 
   if (!response.ok) {

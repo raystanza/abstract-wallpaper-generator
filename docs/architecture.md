@@ -66,6 +66,22 @@ Renderer selection is intentionally conservative:
 
 The React app disposes WebGL buffers/programs, removes context event listeners, and revokes server preview object URLs when previews are replaced or the component unmounts. Server fallback uses the existing binary `POST /api/generate` path, preserving deterministic generation inputs while GPU preview remains approximate.
 
+### Preview Orchestration
+
+Live preview orchestration lives in `src/web/rendering/useWallpaperPreview.ts`, with pure planning helpers in `src/shared/previewOrchestration.mjs`.
+
+Preview flow:
+
+1. The studio serializes the current `GenerationRequest` with stable key ordering.
+2. High-frequency control changes are debounced before rendering. Expensive requests, such as high-density or fractal previews, use a longer debounce.
+3. If auto preview is enabled, the hook selects WebGL2 when browser capability detection supports it; otherwise it uses the server preview path.
+4. If auto preview is disabled, settings changes mark the preview as pending until the creator presses refresh.
+5. Server fallback uses `AbortController` so newer requests cancel older `POST /api/generate` calls.
+6. Each render run has a monotonically increasing run id, preventing stale GPU or server results from replacing newer previews.
+7. Server preview object URLs are revoked when replaced and on unmount.
+
+The preview header exposes auto preview, server-forced preview, manual refresh, and seed randomization. The inspector reports renderer mode, preview status, elapsed time, preview resolution, seed, and capability diagnostics. Final export remains separate from this preview loop and continues to use the reliable server CPU path until the dedicated export pipeline is introduced.
+
 ## Server API
 
 API routes are registered in `src/server/apiRoutes.js`. Request normalization for generation lives in `src/server/generationRequest.js`, and structured API error helpers live in `src/server/errors.js`. The server entry remains JavaScript for now; this prompt deliberately prepares the boundary for TypeScript modules without migrating every generator or the Express app.

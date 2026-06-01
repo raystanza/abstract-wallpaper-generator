@@ -24,8 +24,9 @@ export function createPreviewRenderer(
 
 export async function renderServerPreview(
   request: Parameters<typeof generateWallpaper>[0],
+  options: { signal?: AbortSignal } = {},
 ) {
-  return generateWallpaper(request);
+  return generateWallpaper(request, options);
 }
 
 export function rendererModeLabel(mode: RenderMode) {
