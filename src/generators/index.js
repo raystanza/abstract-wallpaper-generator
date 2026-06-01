@@ -4,10 +4,12 @@ const drawBubbles = require("./bubbles");
 const drawFire = require("./fire");
 const drawFlowField = require("./flow-field");
 const drawFractalTree = require("./fractal-tree");
+const drawGradientField = require("./gradient-field");
 const drawIce = require("./ice");
 const drawJuliaSet = require("./julia-set");
 const drawKochSnowflake = require("./koch-snowflake");
 const drawMandelbrotSet = require("./mandelbrot-set");
+const drawMoireInterference = require("./moire-interference");
 const drawParticleOrbits = require("./particle-orbits");
 const drawShapes = require("./shapes");
 const drawSierpinskiTriangle = require("./sierpinski-triangle");
@@ -17,6 +19,7 @@ const drawVoronoiCells = require("./voronoi-cells");
 const drawWater = require("./water");
 const drawWaves = require("./waves");
 const drawCircuitBoard = require("./circuit-board");
+const drawDomainWarpNoise = require("./domain-warp-noise");
 const { getPaletteNames } = require("../generation/palettes");
 const { normalizeGeneratorMetadata } = require("../shared/generationContract");
 
@@ -53,6 +56,13 @@ const densityParameter = {
   max: 5000,
   step: 1,
   defaultValue: 50,
+};
+
+const gpuPreviewRendering = {
+  modes: ["webgl2", "server-cpu"],
+  preferredPreviewMode: "webgl2",
+  exportMode: "server-cpu",
+  gpuPreview: true,
 };
 
 const generators = {
@@ -242,6 +252,158 @@ const generators = {
     category: "systems",
     parameters: [densityParameter, ...sharedParameters],
     render: drawCircuitBoard,
+  },
+  "domain-warp-noise": {
+    id: "domain-warp-noise",
+    name: "Domain Warp Noise",
+    description:
+      "Palette-mapped warped noise fields with fluid bands, ridges, and GPU-friendly preview shading.",
+    category: "shader",
+    rendering: gpuPreviewRendering,
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Texture Detail",
+        defaultValue: 180,
+      },
+      {
+        id: "frequency",
+        label: "Frequency",
+        type: "number",
+        min: 0.5,
+        max: 7,
+        step: 0.1,
+        defaultValue: 2.7,
+        scope: "options",
+      },
+      {
+        id: "warpStrength",
+        label: "Warp Strength",
+        type: "number",
+        min: 0,
+        max: 2,
+        step: 0.05,
+        defaultValue: 0.82,
+        scope: "options",
+      },
+      {
+        id: "contrast",
+        label: "Contrast",
+        type: "number",
+        min: 0.1,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.62,
+        scope: "options",
+      },
+      {
+        id: "octaves",
+        label: "Octaves",
+        type: "number",
+        min: 2,
+        max: 7,
+        step: 1,
+        defaultValue: 5,
+        scope: "options",
+        advanced: true,
+      },
+      ...sharedParameters,
+    ],
+    render: drawDomainWarpNoise,
+  },
+  "moire-interference": {
+    id: "moire-interference",
+    name: "Moire Interference",
+    description:
+      "Radial interference rings and cross-wave bands for precise optical wallpaper patterns.",
+    category: "shader",
+    rendering: gpuPreviewRendering,
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Line Density",
+        defaultValue: 90,
+      },
+      {
+        id: "ringFrequency",
+        label: "Ring Frequency",
+        type: "number",
+        min: 8,
+        max: 96,
+        step: 1,
+        defaultValue: 34,
+        scope: "options",
+      },
+      {
+        id: "interference",
+        label: "Interference",
+        type: "number",
+        min: 0.1,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.72,
+        scope: "options",
+      },
+      {
+        id: "centerCount",
+        label: "Centers",
+        type: "number",
+        min: 2,
+        max: 5,
+        step: 1,
+        defaultValue: 3,
+        scope: "options",
+      },
+      ...sharedParameters,
+    ],
+    render: drawMoireInterference,
+  },
+  "gradient-field": {
+    id: "gradient-field",
+    name: "Gradient Field",
+    description:
+      "Generative mesh-gradient composition with seeded color nodes, soft blending, and subtle contour texture.",
+    category: "shader",
+    rendering: gpuPreviewRendering,
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Contour Detail",
+        defaultValue: 120,
+      },
+      {
+        id: "nodes",
+        label: "Color Nodes",
+        type: "number",
+        min: 3,
+        max: 14,
+        step: 1,
+        defaultValue: 7,
+        scope: "options",
+      },
+      {
+        id: "softness",
+        label: "Softness",
+        type: "number",
+        min: 0.2,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.68,
+        scope: "options",
+      },
+      {
+        id: "turbulence",
+        label: "Turbulence",
+        type: "number",
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.42,
+        scope: "options",
+      },
+      ...sharedParameters,
+    ],
+    render: drawGradientField,
   },
 };
 

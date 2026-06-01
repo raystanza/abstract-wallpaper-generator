@@ -73,16 +73,26 @@ test("GET /api/generators returns public generator metadata", async () => {
       assert.equal(generator.defaults.generationType, generator.id);
       assert.equal(generator.defaults.size.width, 1920);
       assert.equal(generator.defaults.size.height, 1080);
-      assert.deepEqual(generator.rendering, {
-        modes: ["server-cpu"],
-        preferredPreviewMode: "server-cpu",
-        exportMode: "server-cpu",
-        gpuPreview: false,
-      });
+      assert.equal(Array.isArray(generator.rendering.modes), true);
+      assert.equal(generator.rendering.exportMode, "server-cpu");
+      assert.equal(typeof generator.rendering.gpuPreview, "boolean");
       assert.equal(
         Object.prototype.hasOwnProperty.call(generator, "render"),
         false,
       );
+    }
+
+    const shaderGenerators = body.generators.filter(
+      (generator) => generator.category === "shader",
+    );
+    assert.equal(shaderGenerators.length, 3);
+    for (const generator of shaderGenerators) {
+      assert.deepEqual(generator.rendering, {
+        modes: ["webgl2", "server-cpu"],
+        preferredPreviewMode: "webgl2",
+        exportMode: "server-cpu",
+        gpuPreview: true,
+      });
     }
 
     const shapes = body.generators.find(

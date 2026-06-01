@@ -186,6 +186,34 @@ export type ExportResultMetadata = GenerationResultMetadata & {
   renderer: RenderMode;
 };
 
+export type HistorySource = "preview" | "export" | "manual";
+
+export type HistoryThumbnailSpec = {
+  type: "palette";
+  colors: string[];
+};
+
+export type WallpaperHistoryItem = {
+  id: string;
+  timestamp: string;
+  generatorId: GeneratorId;
+  settings: Record<string, unknown>;
+  resolvedSeed: Seed;
+  thumbnail: HistoryThumbnailSpec;
+  rendererMode: RenderMode;
+  favorite: boolean;
+  source: HistorySource;
+  signature: string;
+};
+
+export type ProjectSessionState = {
+  version: number;
+  updatedAt: string;
+  settings: Record<string, unknown> | null;
+  savedSettings: Record<string, unknown> | null;
+  history: WallpaperHistoryItem[];
+};
+
 export type GeneratorResponse = {
   generators: GeneratorMetadata[];
 };

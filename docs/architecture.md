@@ -70,6 +70,24 @@ Renderer selection is intentionally conservative:
 
 The React app disposes WebGL buffers/programs, removes context event listeners, and revokes server preview object URLs when previews are replaced or the component unmounts. Server fallback uses the existing binary `POST /api/generate` path, preserving deterministic generation inputs while GPU preview remains approximate.
 
+### Advanced Shader Generators
+
+The studio includes three modern shader-oriented generators that remain exportable through the server CPU path:
+
+- `domain-warp-noise`: warped simplex-noise texture fields with frequency, warp strength, contrast, and octave controls.
+- `moire-interference`: radial moire and optical interference fields with ring frequency, interference, and center-count controls.
+- `gradient-field`: seeded mesh-gradient fields with color nodes, softness, turbulence, and contour texture.
+
+Each generator declares `rendering.gpuPreview: true`, `preferredPreviewMode: "webgl2"`, and `exportMode: "server-cpu"`. The WebGL preview shader branches by `generationType` and maps the same high-level request inputs into shader uniforms. The browser GPU preview is intentionally approximate: it matches palette, seed, size, density, and the primary option controls, while final export uses the deterministic CPU renderer in `src/generators/*.js`.
+
+Adding another shader-oriented generator follows the same model:
+
+1. Add a CPU renderer under `src/generators/` so export stays reliable.
+2. Register it in `src/generators/index.js` with `scope: "options"` parameters for generator-specific controls.
+3. Set rendering metadata only when the WebGL preview shader has a corresponding effect branch.
+4. Add at least one preset in `src/shared/wallpaperPresets.mjs`.
+5. Add tests for metadata, option validation, and deterministic output.
+
 ### Preview Orchestration
 
 Live preview orchestration lives in `src/web/rendering/useWallpaperPreview.ts`, with pure planning helpers in `src/shared/previewOrchestration.mjs`.
@@ -179,6 +197,34 @@ To add a palette:
 3. The React palette grid and WebGL preview will pick up the shared catalog entry automatically.
 
 Reproducible settings can be shared from the inspector with Copy JSON. Pasted settings JSON is sanitized through the active generator metadata before it replaces studio state, preserving server-side validation as the final source of truth.
+
+### Local Project State
+
+Project/session persistence is local-first and browser-only. The studio writes the current settings, explicit saved settings, and compact history metadata to `localStorage` under `abstract-wallpaper-generator:project-state:v1`.
+
+History items store:
+
+- id and timestamp.
+- generator id.
+- sanitized settings snapshot.
+- resolved seed.
+- renderer mode.
+- source (`preview`, `export`, or `manual`).
+- favorite flag.
+- a lightweight palette thumbnail made from swatch colors.
+
+The app does not store full-resolution exports, generated PNG bytes, or server-side project data in local storage. Preview object URLs remain temporary and are revoked by the preview/export code paths. History is capped at 30 items, with favorites preserved before older non-favorites are trimmed. Clearing history or starting a new session only affects local browser data.
+
+The shared helpers in `src/shared/projectState.mjs` keep this behavior testable:
+
+- `createHistoryItem()`
+- `upsertHistoryItem()`
+- `limitHistory()`
+- `restoreHistorySettings()`
+- `serializeProjectState()`
+- `parseProjectState()`
+
+Restoring a history item or local session re-sanitizes settings through current generator metadata. If a generator is no longer available, the item is left in history but cannot replace the active settings.
 
 ## Server API
 

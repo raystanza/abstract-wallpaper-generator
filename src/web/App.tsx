@@ -5,13 +5,17 @@ import {
   Cpu,
   ClipboardPaste,
   Download,
+  History,
   ImageIcon,
   Palette,
   PanelRight,
+  Plus,
   RefreshCcw,
   Save,
   Shuffle,
   Sparkles,
+  Star,
+  Trash2,
   Wand2,
   Zap,
 } from "lucide-react";
@@ -22,12 +26,23 @@ import type {
   GeneratorMetadata,
   GeneratorParameter,
   ParameterOption,
+  WallpaperHistoryItem,
   WallpaperPreset,
 } from "../shared/contracts";
 import generatorSettings, {
   type GeneratorSettings,
 } from "../shared/generatorSettings.mjs";
 import { listPaletteEntries, randomPaletteId } from "../shared/paletteCatalog.mjs";
+import {
+  PROJECT_STORAGE_KEY,
+  createHistoryItem,
+  parseProjectState,
+  removeHistoryItem,
+  restoreHistorySettings,
+  serializeProjectState,
+  toggleHistoryFavorite,
+  upsertHistoryItem,
+} from "../shared/projectState.mjs";
 import {
   applyWallpaperPreset,
   listWallpaperPresets,
@@ -72,6 +87,9 @@ type ApiStatus = "loading" | "ready" | "error";
 type ExportStatus = "idle" | "exporting" | "ready" | "error";
 type PreviewStatus = "idle" | "rendering" | "ready" | "fallback" | "error";
 type ParameterGroupName = "generator" | "style" | "seed" | "advanced";
+type WorkflowTone = "neutral" | "success" | "warning" | "danger";
+
+const HISTORY_CAPTURE_COOLDOWN_MS = 2500;
 
 const groupLabels: Record<ParameterGroupName, { eyebrow: string; title: string }> =
   {
@@ -198,11 +216,44 @@ function seedLines(value: string) {
     .slice(0, 12);
 }
 
+function formatHistoryTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Recent";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function historySourceLabel(source: WallpaperHistoryItem["source"]) {
+  if (source === "export") {
+    return "Export";
+  }
+
+  if (source === "manual") {
+    return "Manual";
+  }
+
+  return "Preview";
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const exportUrlsRef = useRef<string[]>([]);
+  const lastHistoryCaptureRef = useRef({ capturedAt: 0, signature: "" });
   const [generators, setGenerators] = useState<GeneratorMetadata[]>([]);
   const [settings, setSettings] = useState<GeneratorSettings | null>(null);
+  const [savedSettings, setSavedSettings] = useState<GeneratorSettings | null>(
+    null,
+  );
+  const [historyItems, setHistoryItems] = useState<WallpaperHistoryItem[]>([]);
+  const [projectReady, setProjectReady] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("loading");
   const [apiMessage, setApiMessage] = useState("Connecting");
   const [autoPreview, setAutoPreview] = useState(true);
@@ -216,9 +267,7 @@ export default function App() {
   const [presetQuery, setPresetQuery] = useState("");
   const [settingsJson, setSettingsJson] = useState("");
   const [workflowMessage, setWorkflowMessage] = useState("Settings ready");
-  const [workflowTone, setWorkflowTone] = useState<
-    "neutral" | "success" | "warning" | "danger"
-  >("neutral");
+  const [workflowTone, setWorkflowTone] = useState<WorkflowTone>("neutral");
 
   useEffect(
     () => () => {
@@ -246,13 +295,29 @@ export default function App() {
 
         const firstGenerator = nextGenerators[0];
         setGenerators(nextGenerators);
+        const storedProject = localStorage.getItem(PROJECT_STORAGE_KEY);
+        const restoredProject = storedProject
+          ? parseProjectState(storedProject, nextGenerators)
+          : { state: null, errors: [] };
+        const restoredSettings = restoredProject.state?.settings;
+
         setSettings(
-          firstGenerator
-            ? createDefaultGeneratorSettings(firstGenerator)
-            : null,
+          restoredSettings ??
+            (firstGenerator
+              ? createDefaultGeneratorSettings(firstGenerator)
+              : null),
+        );
+        setSavedSettings(restoredProject.state?.savedSettings ?? null);
+        setHistoryItems(restoredProject.state?.history ?? []);
+        setWorkflowTone(restoredProject.state ? "success" : "neutral");
+        setWorkflowMessage(
+          restoredProject.state
+            ? "Last local session restored"
+            : "Settings ready",
         );
         setApiStatus("ready");
         setApiMessage(`${nextGenerators.length} generators`);
+        setProjectReady(true);
       } catch (error) {
         if (!isCurrent) {
           return;
@@ -262,6 +327,7 @@ export default function App() {
         setApiMessage(
           error instanceof Error ? error.message : "API unavailable",
         );
+        setProjectReady(true);
       }
     }
 
@@ -271,6 +337,21 @@ export default function App() {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!projectReady || generators.length === 0) {
+      return;
+    }
+
+    localStorage.setItem(
+      PROJECT_STORAGE_KEY,
+      serializeProjectState({
+        history: historyItems,
+        savedSettings,
+        settings,
+      }),
+    );
+  }, [generators.length, historyItems, projectReady, savedSettings, settings]);
 
   const selectedGenerator = useMemo(() => {
     if (!settings) {
@@ -391,6 +472,55 @@ export default function App() {
     generator: selectedGenerator,
     request: previewRequest,
   });
+
+  useEffect(() => {
+    if (
+      !projectReady ||
+      !settings ||
+      !selectedGenerator ||
+      (previewStatus !== "ready" && previewStatus !== "fallback")
+    ) {
+      return;
+    }
+
+    const resolvedSeed =
+      previewMetrics.seed || previewRequest?.seed || settings.seed;
+    if (!resolvedSeed) {
+      return;
+    }
+
+    const item = createHistoryItem({
+      generatorId: selectedGenerator.id,
+      paletteColors: getPreviewPalette(settings.palette),
+      rendererMode: activeMode,
+      resolvedSeed,
+      settings,
+      source: "preview",
+    });
+    const now = Date.now();
+    const lastCapture = lastHistoryCaptureRef.current;
+
+    if (
+      item.signature === lastCapture.signature ||
+      now - lastCapture.capturedAt < HISTORY_CAPTURE_COOLDOWN_MS
+    ) {
+      return;
+    }
+
+    lastHistoryCaptureRef.current = {
+      capturedAt: now,
+      signature: item.signature,
+    };
+    setHistoryItems((currentHistory) => upsertHistoryItem(currentHistory, item));
+  }, [
+    activeMode,
+    previewMetrics.seed,
+    previewRequest,
+    previewStatus,
+    projectReady,
+    selectedGenerator,
+    settings,
+  ]);
 
   function mutateSettings(
     updater: (
@@ -532,6 +662,112 @@ export default function App() {
     setWorkflowMessage("Settings JSON applied");
   }
 
+  function captureHistoryItem(
+    source: WallpaperHistoryItem["source"],
+    resolvedSeed: string,
+    rendererMode = activeMode,
+    snapshot = settings,
+  ) {
+    if (!snapshot || !selectedGenerator) {
+      return null;
+    }
+
+    const item = createHistoryItem({
+      generatorId: selectedGenerator.id,
+      paletteColors: getPreviewPalette(snapshot.palette),
+      rendererMode,
+      resolvedSeed: resolvedSeed || snapshot.seed || "auto",
+      settings: snapshot,
+      source,
+    });
+
+    setHistoryItems((currentHistory) => upsertHistoryItem(currentHistory, item));
+    return item;
+  }
+
+  function handleSaveSession() {
+    if (!settings) {
+      return;
+    }
+
+    setSavedSettings(settings);
+    localStorage.setItem(
+      PROJECT_STORAGE_KEY,
+      serializeProjectState({
+        history: historyItems,
+        savedSettings: settings,
+        settings,
+      }),
+    );
+    setWorkflowTone("success");
+    setWorkflowMessage("Current settings saved locally");
+  }
+
+  function handleRestoreSession() {
+    const storedProject = localStorage.getItem(PROJECT_STORAGE_KEY);
+
+    if (!storedProject) {
+      setWorkflowTone("warning");
+      setWorkflowMessage("No local session found");
+      return;
+    }
+
+    const result = parseProjectState(storedProject, generators);
+
+    if (!result.state) {
+      setWorkflowTone("danger");
+      setWorkflowMessage(result.errors[0] ?? "Local session is invalid");
+      return;
+    }
+
+    setSettings(result.state.savedSettings ?? result.state.settings);
+    setSavedSettings(result.state.savedSettings);
+    setHistoryItems(result.state.history);
+    setWorkflowTone(result.errors.length > 0 ? "warning" : "success");
+    setWorkflowMessage(
+      result.errors[0] ?? "Local session restored",
+    );
+  }
+
+  function handleNewSession() {
+    if (!window.confirm("Start a new local session and clear history?")) {
+      return;
+    }
+
+    localStorage.removeItem(PROJECT_STORAGE_KEY);
+    setHistoryItems([]);
+    setSavedSettings(null);
+    setSettings(
+      generators[0] ? createDefaultGeneratorSettings(generators[0]) : null,
+    );
+    setWorkflowTone("success");
+    setWorkflowMessage("New local session started");
+  }
+
+  function handleRestoreHistory(item: WallpaperHistoryItem) {
+    const result = restoreHistorySettings(item, generators);
+
+    if (!result.settings) {
+      setWorkflowTone("danger");
+      setWorkflowMessage(result.errors[0] ?? "History item could not restore");
+      return;
+    }
+
+    setSettings(result.settings);
+    setWorkflowTone("success");
+    setWorkflowMessage(`Restored ${item.generatorId} / ${item.resolvedSeed}`);
+  }
+
+  function handleClearHistory() {
+    if (!window.confirm("Clear local generation history?")) {
+      return;
+    }
+
+    setHistoryItems([]);
+    setWorkflowTone("success");
+    setWorkflowMessage("History cleared");
+  }
+
   function downloadBlob(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
     exportUrlsRef.current.push(url);
@@ -580,6 +816,15 @@ export default function App() {
             ...settings,
             seed: result.metadata.seed,
           }),
+        );
+        captureHistoryItem(
+          "export",
+          result.metadata.seed,
+          result.metadata.renderer,
+          {
+            ...settings,
+            seed: result.metadata.seed,
+          },
         );
         setExportMessage(
           exportSeeds.length === 1
@@ -1204,6 +1449,92 @@ export default function App() {
             </span>
             <span>{previewMetrics.seed || settings?.seed || "auto seed"}</span>
           </footer>
+
+          <section className="history-panel" aria-label="Generation history">
+            <div className="history-panel__header">
+              <div>
+                <p className="eyebrow">History</p>
+                <h2>Recent Looks</h2>
+              </div>
+              <div className="history-panel__actions">
+                <StatusBadge>{historyItems.length} saved</StatusBadge>
+                <IconButton
+                  disabled={historyItems.length === 0}
+                  icon={Trash2}
+                  label="Clear history"
+                  onClick={handleClearHistory}
+                  variant="secondary"
+                />
+              </div>
+            </div>
+            {historyItems.length > 0 ? (
+              <div className="history-strip">
+                {historyItems.map((item) => (
+                  <article className="history-item" key={item.id}>
+                    <button
+                      className="history-thumbnail"
+                      onClick={() => handleRestoreHistory(item)}
+                      style={{
+                        background: `linear-gradient(135deg, ${item.thumbnail.colors.join(", ")})`,
+                      }}
+                      type="button"
+                    >
+                      <span>Restore</span>
+                    </button>
+                    <div className="history-item__body">
+                      <div className="history-item__title">
+                        <strong>{formatCategory(item.generatorId)}</strong>
+                        <span>{historySourceLabel(item.source)}</span>
+                      </div>
+                      <div className="history-item__meta">
+                        <span>{item.resolvedSeed || "auto seed"}</span>
+                        <span>{formatHistoryTime(item.timestamp)}</span>
+                      </div>
+                      <div className="history-item__actions">
+                        <Button
+                          onClick={() => handleRestoreHistory(item)}
+                          variant="secondary"
+                        >
+                          Restore
+                        </Button>
+                        <IconButton
+                          aria-pressed={item.favorite}
+                          className={item.favorite ? "is-active" : ""}
+                          icon={Star}
+                          label={
+                            item.favorite
+                              ? "Remove favorite"
+                              : "Mark favorite"
+                          }
+                          onClick={() =>
+                            setHistoryItems((currentHistory) =>
+                              toggleHistoryFavorite(currentHistory, item.id),
+                            )
+                          }
+                          variant="secondary"
+                        />
+                        <IconButton
+                          icon={Trash2}
+                          label="Remove history item"
+                          onClick={() =>
+                            setHistoryItems((currentHistory) =>
+                              removeHistoryItem(currentHistory, item.id),
+                            )
+                          }
+                          variant="secondary"
+                        />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="history-empty">
+                <History aria-hidden="true" size={18} />
+                <span>Rendered previews and exports appear here.</span>
+              </div>
+            )}
+          </section>
         </section>
 
         <aside
@@ -1346,6 +1677,21 @@ export default function App() {
 
           <div className="panel-section">
             <PanelHeader eyebrow="Workflow" title="Share" />
+            <div className="workflow-actions workflow-actions--project">
+              <Button icon={Plus} onClick={handleNewSession} variant="secondary">
+                New
+              </Button>
+              <Button icon={Save} onClick={handleSaveSession} variant="secondary">
+                Save
+              </Button>
+              <Button
+                icon={RefreshCcw}
+                onClick={handleRestoreSession}
+                variant="secondary"
+              >
+                Restore
+              </Button>
+            </div>
             <div className="workflow-actions">
               <Button
                 icon={Copy}
