@@ -30,7 +30,11 @@ Primary UI regions:
 
 Local app-owned primitives live in `src/web/components/ui.tsx` and include buttons, icon buttons, fields, sliders, toggles, segmented controls, swatches, panel headers, and status badges. Styling tokens and responsive layout rules live in `src/web/styles/app.css`.
 
-Generator control state is resolved through `src/shared/generatorSettings.js` with TypeScript declarations in `src/shared/generatorSettings.d.ts`. The settings object is serializable and contains the selected generator, size, seed, palette, background, render mode, and parameter values. The helper layer resolves defaults from metadata, preserves compatible values during generator switches, clamps impossible sizes and numeric parameters, and creates the `GenerationRequest` sent to preview/export paths.
+Generator control state is resolved through `src/shared/generatorSettings.mjs` with TypeScript declarations in `src/shared/generatorSettings.d.mts`. The settings object is serializable and contains the selected generator, size, seed, palette, background, render mode, and parameter values. The helper layer resolves defaults from metadata, preserves compatible values during generator switches, clamps impossible sizes and numeric parameters, and creates the `GenerationRequest` sent to preview/export paths.
+
+Preset and sharing helpers live in `src/shared/wallpaperPresets.mjs`. Presets apply through the same settings resolver as manual controls, so applying a preset produces a normal serializable settings object. The studio can copy settings JSON and safely parse pasted JSON through `parseGeneratorSettingsJson()`; invalid imports return errors and do not replace the current settings.
+
+Palette UI metadata lives in `src/shared/paletteCatalog.mjs`. The renderer uses that catalog for visual swatches and WebGL preview palette colors. The server renderer still reads named palettes from `src/generation/palettes.js`, so adding a production palette currently requires updating both files with the same id and colors.
 
 Development commands:
 
@@ -81,6 +85,50 @@ Preview flow:
 7. Server preview object URLs are revoked when replaced and on unmount.
 
 The preview header exposes auto preview, server-forced preview, manual refresh, and seed randomization. The inspector reports renderer mode, preview status, elapsed time, preview resolution, seed, and capability diagnostics. Final export remains separate from this preview loop and continues to use the reliable server CPU path until the dedicated export pipeline is introduced.
+
+## Creator Workflow
+
+Built-in presets are small, reviewable objects:
+
+```js
+{
+  id: "tidal-lines",
+  name: "Tidal Lines",
+  generatorId: "waves",
+  size: { width: 2560, height: 1440 },
+  seed: "tidal-lines-02",
+  seedBehavior: "locked",
+  palette: "ocean",
+  background: {
+    type: "linear-gradient",
+    colors: ["#061923", "#0d3b52"],
+    direction: "vertical"
+  },
+  parameters: { shapes: 82 },
+  tags: ["waves", "cool", "wide"]
+}
+```
+
+To add a preset:
+
+1. Add the object to `wallpaperPresets` in `src/shared/wallpaperPresets.mjs`.
+2. Use a generator id that appears in `src/generators/index.js`.
+3. Keep `parameters` aligned with the generator metadata ids, such as `shapes` or `shapeTypes`.
+4. Run `pnpm test`; preset validation checks every built-in preset against current generator metadata.
+
+Seed behavior:
+
+- `locked`: applies the seed and turns on seed lock.
+- `fixed`: applies the seed but leaves it editable.
+- `random`: clears the seed so the preview/export flow can resolve a fresh seed.
+
+To add a palette:
+
+1. Add the id, name, category, and five colors to `src/shared/paletteCatalog.mjs`.
+2. Add the same id and colors to `src/generation/palettes.js` so server generation accepts it.
+3. The React palette grid and WebGL preview will pick up the shared catalog entry automatically.
+
+Reproducible settings can be shared from the inspector with Copy JSON. Pasted settings JSON is sanitized through the active generator metadata before it replaces studio state, preserving server-side validation as the final source of truth.
 
 ## Server API
 

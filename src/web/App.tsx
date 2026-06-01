@@ -3,13 +3,16 @@ import {
   ChevronUp,
   Copy,
   Cpu,
+  ClipboardPaste,
   Download,
   ImageIcon,
+  Palette,
   PanelRight,
   RefreshCcw,
   Save,
   Shuffle,
   Sparkles,
+  Wand2,
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,10 +22,18 @@ import type {
   GeneratorMetadata,
   GeneratorParameter,
   ParameterOption,
+  WallpaperPreset,
 } from "../shared/contracts";
 import generatorSettings, {
   type GeneratorSettings,
 } from "../shared/generatorSettings.mjs";
+import { listPaletteEntries, randomPaletteId } from "../shared/paletteCatalog.mjs";
+import {
+  applyWallpaperPreset,
+  listWallpaperPresets,
+  parseGeneratorSettingsJson,
+  serializeGeneratorSettings,
+} from "../shared/wallpaperPresets.mjs";
 import {
   Button,
   ColorSwatch,
@@ -53,6 +64,8 @@ const {
   updateGeneratorSize,
   validateGeneratorSettings,
 } = generatorSettings;
+
+const builtInPresets = listWallpaperPresets();
 
 type ApiStatus = "loading" | "ready" | "error";
 type PreviewStatus = "idle" | "rendering" | "ready" | "fallback" | "error";
@@ -163,6 +176,12 @@ export default function App() {
   const [forceServerPreview, setForceServerPreview] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [copiedSeed, setCopiedSeed] = useState(false);
+  const [presetQuery, setPresetQuery] = useState("");
+  const [settingsJson, setSettingsJson] = useState("");
+  const [workflowMessage, setWorkflowMessage] = useState("Settings ready");
+  const [workflowTone, setWorkflowTone] = useState<
+    "neutral" | "success" | "warning" | "danger"
+  >("neutral");
 
   useEffect(() => {
     let isCurrent = true;
@@ -263,6 +282,26 @@ export default function App() {
     return validateGeneratorSettings(settings, selectedGenerator);
   }, [selectedGenerator, settings]);
 
+  const filteredPresets = useMemo(() => {
+    const query = presetQuery.trim().toLowerCase();
+
+    if (!query) {
+      return builtInPresets;
+    }
+
+    return builtInPresets.filter((preset) => {
+      const searchText = [
+        preset.name,
+        preset.generatorId,
+        preset.palette,
+        ...preset.tags,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return searchText.includes(query);
+    });
+  }, [presetQuery]);
+
   const previewRequest = useMemo<GenerationRequest | null>(() => {
     if (!settings || !selectedGenerator || validationMessages.length > 0) {
       return null;
@@ -344,6 +383,21 @@ export default function App() {
     );
   }
 
+  function handleApplyWallpaperPreset(preset: WallpaperPreset) {
+    const result = applyWallpaperPreset(preset, generators);
+
+    if (!result.settings) {
+      setWorkflowTone("danger");
+      setWorkflowMessage(result.errors[0] ?? "Preset could not be applied.");
+      return;
+    }
+
+    setSettings(result.settings);
+    setAdvancedOpen(false);
+    setWorkflowTone("success");
+    setWorkflowMessage(`Applied ${preset.name}`);
+  }
+
   function handleSizeChange(dimension: "width" | "height", value: string) {
     mutateSettings((currentSettings, currentGenerator) =>
       updateGeneratorSize(currentSettings, currentGenerator, {
@@ -364,6 +418,10 @@ export default function App() {
     );
   }
 
+  function handleRandomPalette() {
+    handleParameterChange("colorPalette", randomPaletteId());
+  }
+
   function handleShuffleSeed() {
     if (!settings?.seedLocked) {
       handleParameterChange("seed", createSeed());
@@ -380,6 +438,36 @@ export default function App() {
     await navigator.clipboard.writeText(seedValue);
     setCopiedSeed(true);
     window.setTimeout(() => setCopiedSeed(false), 1200);
+  }
+
+  async function handleCopySettings() {
+    if (!settings) {
+      return;
+    }
+
+    const nextJson = serializeGeneratorSettings(settings);
+    setSettingsJson(nextJson);
+
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(nextJson);
+    }
+
+    setWorkflowTone("success");
+    setWorkflowMessage("Settings JSON copied");
+  }
+
+  function handleApplySettingsJson() {
+    const result = parseGeneratorSettingsJson(settingsJson, generators);
+
+    if (!result.settings) {
+      setWorkflowTone("danger");
+      setWorkflowMessage(result.errors[0] ?? "Settings JSON is invalid.");
+      return;
+    }
+
+    setSettings(result.settings);
+    setWorkflowTone("success");
+    setWorkflowMessage("Settings JSON applied");
   }
 
   function renderBackgroundControl(parameter: GeneratorParameter) {
@@ -577,17 +665,50 @@ export default function App() {
 
       return (
         <div className="parameter-control" key={parameter.id}>
-          <SelectField
-            label={parameter.label}
-            onChange={(nextValue) =>
-              handleParameterChange(parameter.id, nextValue)
-            }
-            options={parameter.options}
-            value={paletteName}
-          />
+          <div className="field-with-action">
+            <SelectField
+              label={parameter.label}
+              onChange={(nextValue) =>
+                handleParameterChange(parameter.id, nextValue)
+              }
+              options={parameter.options}
+              value={paletteName}
+            />
+            <IconButton
+              icon={Wand2}
+              label="Random palette"
+              onClick={handleRandomPalette}
+              variant="secondary"
+            />
+          </div>
           <div className="swatch-row" aria-label="Selected palette swatches">
             {previewPalette.map((color) => (
               <ColorSwatch color={color} key={color} label={color} />
+            ))}
+          </div>
+          <div className="palette-grid" aria-label="Palette choices">
+            {listPaletteEntries().map((palette) => (
+              <button
+                aria-pressed={palette.id === paletteName}
+                className="palette-choice"
+                key={palette.id}
+                onClick={() => handleParameterChange(parameter.id, palette.id)}
+                type="button"
+              >
+                <span className="palette-choice__label">
+                  <Palette aria-hidden="true" size={14} />
+                  <span>{palette.name}</span>
+                  <small>{palette.category}</small>
+                </span>
+                <span className="palette-choice__swatches" aria-hidden="true">
+                  {palette.colors.map((color) => (
+                    <span
+                      key={`${palette.id}-${color}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </span>
+              </button>
             ))}
           </div>
         </div>
@@ -720,7 +841,11 @@ export default function App() {
         </div>
         <div className="toolbar-cluster" aria-label="Project actions">
           <StatusBadge tone={statusTone(apiStatus)}>{apiMessage}</StatusBadge>
-          <IconButton icon={Save} label="Save project" />
+          <IconButton
+            icon={Save}
+            label="Copy settings JSON"
+            onClick={() => void handleCopySettings()}
+          />
           <Button disabled icon={Download} variant="primary">
             Export
           </Button>
@@ -760,6 +885,44 @@ export default function App() {
               <StatusBadge>{selectedCategory}</StatusBadge>
               <StatusBadge>{selectedParameterCount} controls</StatusBadge>
               <StatusBadge>{categories.length} categories</StatusBadge>
+            </div>
+          </div>
+
+          <div className="panel-section">
+            <PanelHeader eyebrow="Presets" title="Starting Points" />
+            <InputField
+              label="Search presets"
+              onChange={setPresetQuery}
+              placeholder="Generator, palette, tag"
+              value={presetQuery}
+            />
+            <div className="preset-list">
+              {filteredPresets.map((preset) => (
+                <button
+                  className="preset-card"
+                  key={preset.id}
+                  onClick={() => handleApplyWallpaperPreset(preset)}
+                  type="button"
+                >
+                  <span className="preset-card__header">
+                    <strong>{preset.name}</strong>
+                    <span>
+                      {preset.size.width} x {preset.size.height}
+                    </span>
+                  </span>
+                  <span className="preset-card__meta">
+                    {formatCategory(preset.generatorId)} / {preset.palette}
+                  </span>
+                  <span className="preset-card__swatches" aria-hidden="true">
+                    {getPreviewPalette(preset.palette).map((color) => (
+                      <span
+                        key={`${preset.id}-${color}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -985,6 +1148,34 @@ export default function App() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="panel-section">
+            <PanelHeader eyebrow="Workflow" title="Share" />
+            <div className="workflow-actions">
+              <Button
+                icon={Copy}
+                onClick={() => void handleCopySettings()}
+                variant="secondary"
+              >
+                Copy JSON
+              </Button>
+              <Button
+                icon={ClipboardPaste}
+                onClick={handleApplySettingsJson}
+                variant="secondary"
+              >
+                Apply JSON
+              </Button>
+            </div>
+            <textarea
+              aria-label="Settings JSON"
+              className="control settings-json"
+              onChange={(event) => setSettingsJson(event.target.value)}
+              placeholder="Paste settings JSON"
+              value={settingsJson}
+            />
+            <StatusBadge tone={workflowTone}>{workflowMessage}</StatusBadge>
           </div>
 
           <div className="panel-section">

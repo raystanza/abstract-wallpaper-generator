@@ -137,6 +137,21 @@ export type GeneratorMetadata = {
   rendering: RendererCapability;
 };
 
+export type PresetSeedBehavior = "fixed" | "random" | "locked";
+
+export type WallpaperPreset = {
+  id: string;
+  name: string;
+  generatorId: GeneratorId;
+  size: WallpaperSize;
+  seed: Seed;
+  seedBehavior: PresetSeedBehavior;
+  palette: ColorPalette;
+  background: BackgroundSpec;
+  parameters: Record<string, unknown>;
+  tags: string[];
+};
+
 export type GenerationRequest = {
   width: number;
   height: number;
