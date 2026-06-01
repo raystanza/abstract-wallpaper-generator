@@ -46,7 +46,7 @@ import {
   StatusBadge,
   Toggle,
 } from "./components/ui";
-import { getGenerators } from "./lib/apiClient";
+import { exportWallpaper, getGenerators } from "./lib/apiClient";
 import { rendererModeLabel } from "./rendering";
 import { getPreviewPalette } from "./rendering/palettes";
 import { useWallpaperPreview } from "./rendering/useWallpaperPreview";
@@ -55,6 +55,7 @@ const {
   BACKGROUND_DIRECTIONS,
   BACKGROUND_TYPES,
   createDefaultGeneratorSettings,
+  createExportRequest,
   createGenerationRequest,
   normalizeBackground,
   presetValueForSize,
@@ -68,6 +69,7 @@ const {
 const builtInPresets = listWallpaperPresets();
 
 type ApiStatus = "loading" | "ready" | "error";
+type ExportStatus = "idle" | "exporting" | "ready" | "error";
 type PreviewStatus = "idle" | "rendering" | "ready" | "fallback" | "error";
 type ParameterGroupName = "generator" | "style" | "seed" | "advanced";
 
@@ -93,7 +95,7 @@ function createSeed() {
   return Array.from(values, (value) => value.toString(36)).join("-");
 }
 
-function statusTone(status: ApiStatus | PreviewStatus) {
+function statusTone(status: ApiStatus | ExportStatus | PreviewStatus) {
   if (status === "ready") {
     return "success";
   }
@@ -102,7 +104,12 @@ function statusTone(status: ApiStatus | PreviewStatus) {
     return "danger";
   }
 
-  if (status === "fallback" || status === "rendering" || status === "loading") {
+  if (
+    status === "exporting" ||
+    status === "fallback" ||
+    status === "rendering" ||
+    status === "loading"
+  ) {
     return "warning";
   }
 
@@ -166,8 +173,34 @@ function getColorAt(background: BackgroundSpec, index: number) {
   return background.colors[index] ?? background.colors[0] ?? "#101820";
 }
 
+function previewExportFilename(
+  generator: GeneratorMetadata | undefined,
+  settings: GeneratorSettings | null,
+) {
+  if (!generator || !settings) {
+    return "wallpaper.png";
+  }
+
+  const seedPart = settings.seed ? `_${settings.seed}` : "_auto-seed";
+  const safeSeed = seedPart
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .slice(0, 48);
+
+  return `${generator.id}_${settings.width}x${settings.height}${safeSeed}_timestamp.png`;
+}
+
+function seedLines(value: string) {
+  return value
+    .split(/\r?\n|,/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const exportUrlsRef = useRef<string[]>([]);
   const [generators, setGenerators] = useState<GeneratorMetadata[]>([]);
   const [settings, setSettings] = useState<GeneratorSettings | null>(null);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("loading");
@@ -175,6 +208,10 @@ export default function App() {
   const [autoPreview, setAutoPreview] = useState(true);
   const [forceServerPreview, setForceServerPreview] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(true);
+  const [exportStatus, setExportStatus] = useState<ExportStatus>("idle");
+  const [exportMessage, setExportMessage] = useState("Ready to export PNG");
+  const [batchSeeds, setBatchSeeds] = useState("");
   const [copiedSeed, setCopiedSeed] = useState(false);
   const [presetQuery, setPresetQuery] = useState("");
   const [settingsJson, setSettingsJson] = useState("");
@@ -182,6 +219,16 @@ export default function App() {
   const [workflowTone, setWorkflowTone] = useState<
     "neutral" | "success" | "warning" | "danger"
   >("neutral");
+
+  useEffect(
+    () => () => {
+      for (const url of exportUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      exportUrlsRef.current = [];
+    },
+    [],
+  );
 
   useEffect(() => {
     let isCurrent = true;
@@ -312,6 +359,21 @@ export default function App() {
       seedFallback: `preview-${selectedGenerator.id}`,
     });
   }, [selectedGenerator, settings, validationMessages.length]);
+
+  const exportRequest = useMemo(() => {
+    if (!settings || !selectedGenerator || validationMessages.length > 0) {
+      return null;
+    }
+
+    return createExportRequest(settings, selectedGenerator, {
+      format: "png",
+    });
+  }, [selectedGenerator, settings, validationMessages.length]);
+
+  const filenamePreview = useMemo(
+    () => previewExportFilename(selectedGenerator, settings),
+    [selectedGenerator, settings],
+  );
 
   const {
     activeMode,
@@ -468,6 +530,69 @@ export default function App() {
     setSettings(result.settings);
     setWorkflowTone("success");
     setWorkflowMessage("Settings JSON applied");
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    exportUrlsRef.current.push(url);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+      exportUrlsRef.current = exportUrlsRef.current.filter(
+        (currentUrl) => currentUrl !== url,
+      );
+    }, 30_000);
+  }
+
+  async function handleExport() {
+    if (!exportRequest || !selectedGenerator || !settings) {
+      setExportStatus("error");
+      setExportMessage("Export settings are invalid.");
+      return;
+    }
+
+    const seeds = seedLines(batchSeeds);
+    const exportSeeds = seeds.length > 0 ? seeds : [settings.seed || ""];
+
+    setExportStatus("exporting");
+    setExportMessage(
+      exportSeeds.length === 1
+        ? "Exporting PNG"
+        : `Exporting ${exportSeeds.length} PNG files`,
+    );
+
+    try {
+      for (let index = 0; index < exportSeeds.length; index += 1) {
+        const seed = exportSeeds[index] || settings.seed;
+        const request = {
+          ...exportRequest,
+          seed,
+        };
+        const result = await exportWallpaper(request);
+        downloadBlob(
+          result.blob,
+          result.metadata.filename || previewExportFilename(selectedGenerator, {
+            ...settings,
+            seed: result.metadata.seed,
+          }),
+        );
+        setExportMessage(
+          exportSeeds.length === 1
+            ? `Downloaded ${result.metadata.filename || "wallpaper.png"}`
+            : `Downloaded ${index + 1} of ${exportSeeds.length}`,
+        );
+      }
+
+      setExportStatus("ready");
+    } catch (error) {
+      setExportStatus("error");
+      setExportMessage(error instanceof Error ? error.message : "Export failed");
+    }
   }
 
   function renderBackgroundControl(parameter: GeneratorParameter) {
@@ -846,7 +971,12 @@ export default function App() {
             label="Copy settings JSON"
             onClick={() => void handleCopySettings()}
           />
-          <Button disabled icon={Download} variant="primary">
+          <Button
+            disabled={!exportRequest || exportStatus === "exporting"}
+            icon={Download}
+            onClick={() => setExportOpen((open) => !open)}
+            variant="primary"
+          >
             Export
           </Button>
         </div>
@@ -1148,6 +1278,70 @@ export default function App() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="panel-section">
+            <PanelHeader
+              actions={
+                <IconButton
+                  icon={exportOpen ? ChevronUp : ChevronDown}
+                  label={exportOpen ? "Hide export settings" : "Show export settings"}
+                  onClick={() => setExportOpen((open) => !open)}
+                />
+              }
+              eyebrow="Export"
+              title="Final Output"
+            />
+            {exportOpen ? (
+              <div className="export-panel">
+                <div className="metric-list">
+                  <div>
+                    <span>Format</span>
+                    <strong>PNG</strong>
+                  </div>
+                  <div>
+                    <span>Renderer</span>
+                    <strong>Server CPU</strong>
+                  </div>
+                  <div>
+                    <span>Resolution</span>
+                    <strong>
+                      {settings?.width ?? 1920} x {settings?.height ?? 1080}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Filename</span>
+                    <strong>{filenamePreview}</strong>
+                  </div>
+                </div>
+                <label className="field">
+                  <span className="field__label">Batch seeds</span>
+                  <textarea
+                    aria-label="Batch export seeds"
+                    className="control settings-json"
+                    onChange={(event) => setBatchSeeds(event.target.value)}
+                    placeholder="Optional: one seed per line"
+                    value={batchSeeds}
+                  />
+                  <span className="field__hint">
+                    Blank exports the current seed. Up to 12 seeds run one at a time.
+                  </span>
+                </label>
+                <Button
+                  disabled={!exportRequest || exportStatus === "exporting"}
+                  icon={Download}
+                  onClick={() => void handleExport()}
+                  variant="primary"
+                >
+                  {seedLines(batchSeeds).length > 0
+                    ? `Export ${seedLines(batchSeeds).length} PNGs`
+                    : "Export PNG"}
+                </Button>
+                <StatusBadge tone={statusTone(exportStatus)}>
+                  {exportMessage}
+                </StatusBadge>
+              </div>
+            ) : null}
           </div>
 
           <div className="panel-section">

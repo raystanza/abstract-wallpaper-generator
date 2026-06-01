@@ -472,6 +472,20 @@ function createGenerationRequest(settings, generator, options = {}) {
   };
 }
 
+function createExportRequest(settings, generator, options = {}) {
+  const request = createGenerationRequest(settings, generator);
+  const format = options.format || "png";
+
+  return {
+    ...request,
+    format,
+    size: {
+      width: request.width,
+      height: request.height,
+    },
+  };
+}
+
 function presetValueForSize(width, height) {
   return (
     resolutionPresets.find(
@@ -486,6 +500,7 @@ const generatorSettings = {
   DEFAULT_BACKGROUND,
   WALLPAPER_SIZE_LIMITS,
   createDefaultGeneratorSettings,
+  createExportRequest,
   createGenerationRequest,
   createParameterValues,
   normalizeBackground,
@@ -507,6 +522,7 @@ export {
   DEFAULT_BACKGROUND,
   WALLPAPER_SIZE_LIMITS,
   createDefaultGeneratorSettings,
+  createExportRequest,
   createGenerationRequest,
   createParameterValues,
   generatorSettings as default,

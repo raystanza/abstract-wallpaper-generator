@@ -415,7 +415,8 @@ h3 {
 }
 
 .parameter-control,
-.advanced-controls {
+.advanced-controls,
+.export-panel {
   display: grid;
   gap: var(--space-3);
   min-width: 0;

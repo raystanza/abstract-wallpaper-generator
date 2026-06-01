@@ -44,6 +44,14 @@ declare const helpers: {
     generator: GeneratorMetadata,
     overrides?: Partial<GeneratorSettings>,
   ) => GeneratorSettings;
+  createExportRequest: (
+    settings: GeneratorSettings,
+    generator: GeneratorMetadata,
+    options?: { format?: "png" },
+  ) => GenerationRequest & {
+    format: "png";
+    size: { width: number; height: number };
+  };
   createGenerationRequest: (
     settings: GeneratorSettings,
     generator: GeneratorMetadata,

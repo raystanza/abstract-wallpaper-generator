@@ -26,11 +26,13 @@ function createDownloadFilename({
   height,
   seed,
   createdAt = new Date(),
+  format = "png",
 }) {
   const timestamp = createdAt.toISOString().replace(/[:.]/g, "-");
   const seedPart = seed ? `_${sanitizeSegment(seed)}` : "";
+  const extension = sanitizeSegment(format);
 
-  return `${sanitizeSegment(generationType)}_${width}x${height}${seedPart}_${timestamp}.png`;
+  return `${sanitizeSegment(generationType)}_${width}x${height}${seedPart}_${timestamp}.${extension}`;
 }
 
 function ensureOutputDirectory(outputFile) {

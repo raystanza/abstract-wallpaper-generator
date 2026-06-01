@@ -49,7 +49,7 @@ The frontend uses typed API helpers in `src/web/lib/apiClient.ts`:
 - `getHealth()`
 - `getGenerators()`
 - `generateWallpaper()`
-- `exportWallpaper()`, currently a placeholder until Prompt 10 defines distinct export semantics.
+- `exportWallpaper()`
 
 ## Preview Rendering
 
@@ -84,7 +84,57 @@ Preview flow:
 6. Each render run has a monotonically increasing run id, preventing stale GPU or server results from replacing newer previews.
 7. Server preview object URLs are revoked when replaced and on unmount.
 
-The preview header exposes auto preview, server-forced preview, manual refresh, and seed randomization. The inspector reports renderer mode, preview status, elapsed time, preview resolution, seed, and capability diagnostics. Final export remains separate from this preview loop and continues to use the reliable server CPU path until the dedicated export pipeline is introduced.
+The preview header exposes auto preview, server-forced preview, manual refresh, and seed randomization. The inspector reports renderer mode, preview status, elapsed time, preview resolution, seed, and capability diagnostics. Final export is separate from this preview loop and uses the reliable server CPU path.
+
+## Export Pipeline
+
+Final export uses `POST /api/export`, not browser GPU rendering. The endpoint accepts the same deterministic generation inputs as preview plus export metadata:
+
+```json
+{
+  "format": "png",
+  "size": { "width": 3840, "height": 2160 },
+  "width": 3840,
+  "height": 2160,
+  "shapes": 120,
+  "shapeTypes": ["circle", "rectangle"],
+  "colorPalette": "mixed",
+  "background": {
+    "type": "solid",
+    "colors": ["#101820"],
+    "direction": "diagonal"
+  },
+  "generationType": "shapes",
+  "seed": "final-render"
+}
+```
+
+Supported export format:
+
+- `png`
+
+The response is a binary PNG with `Content-Disposition: attachment`. Export metadata is returned in `X-Wallpaper-Metadata`, including format and renderer:
+
+```json
+{
+  "generationType": "shapes",
+  "width": 3840,
+  "height": 2160,
+  "colorPalette": "mixed",
+  "background": {
+    "type": "solid",
+    "colors": ["#101820"],
+    "direction": "diagonal"
+  },
+  "seed": "final-render",
+  "filename": "shapes_3840x2160_final-render_2026-05-31T12-00-00-000Z.png",
+  "elapsedMs": 456.7,
+  "format": "png",
+  "renderer": "server-cpu"
+}
+```
+
+The React studio exposes a compact export panel in the inspector. Single export downloads the current settings. Batch export accepts up to 12 seed values and generates one PNG per seed sequentially, avoiding a zip dependency and keeping the UI responsive. Temporary download object URLs are revoked after use and on unmount.
 
 ## Creator Workflow
 
@@ -268,7 +318,10 @@ Invalid requests return structured JSON:
 
 ### `POST /api/export`
 
-Not implemented yet. Export still uses the existing binary generation path. A distinct export API is reserved for Prompt 10, when high-resolution export and batch-rendering semantics are introduced.
+Returns a downloadable PNG rendered by the server CPU path. `format` must be `png`; unsupported formats return `INVALID_GENERATION_REQUEST`. Successful responses include the same wallpaper metadata headers as `POST /api/generate`, plus:
+
+- `X-Wallpaper-Export-Format`
+- `X-Wallpaper-Renderer`
 
 ## Generation Core
 

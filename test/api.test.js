@@ -198,6 +198,79 @@ test("POST /api/generate returns structured validation errors", async () => {
   }
 });
 
+test("POST /api/export returns downloadable png bytes with export metadata", async () => {
+  const server = await startTestServer();
+
+  try {
+    const response = await fetch(`${server.baseUrl}/api/export`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        format: "png",
+        size: {
+          width: 180,
+          height: 128,
+        },
+        shapes: 8,
+        colorPalette: "ocean",
+        background: {
+          type: "solid",
+          colors: ["#101820"],
+        },
+        generationType: "shapes",
+        seed: "export-test",
+        shapeTypes: ["circle", "rectangle"],
+      }),
+    });
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const metadata = JSON.parse(response.headers.get("x-wallpaper-metadata"));
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "image/png");
+    assert.match(
+      response.headers.get("content-disposition"),
+      /^attachment; filename="shapes_180x128_export-test_.*\.png"$/,
+    );
+    assert.equal(response.headers.get("x-wallpaper-export-format"), "png");
+    assert.equal(response.headers.get("x-wallpaper-renderer"), "server-cpu");
+    assert.equal(metadata.format, "png");
+    assert.equal(metadata.renderer, "server-cpu");
+    assert.equal(metadata.width, 180);
+    assert.equal(metadata.height, 128);
+    assert.equal(metadata.seed, "export-test");
+    assertPngBuffer(buffer);
+  } finally {
+    await server.close();
+  }
+});
+
+test("POST /api/export returns structured export validation errors", async () => {
+  const server = await startTestServer();
+
+  try {
+    const response = await fetch(`${server.baseUrl}/api/export`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        format: "webp",
+        size: {
+          width: 180,
+          height: 128,
+        },
+        generationType: "shapes",
+      }),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(body.error, "Invalid wallpaper export request.");
+    assert.equal(body.code, "INVALID_GENERATION_REQUEST");
+    assert.ok(body.details.some((detail) => detail.includes("format")));
+  } finally {
+    await server.close();
+  }
+});
+
 test("POST /api/generate returns structured JSON parse errors", async () => {
   const server = await startTestServer();
 
@@ -221,14 +294,14 @@ test("unknown API routes return structured not found errors", async () => {
   const server = await startTestServer();
 
   try {
-    const response = await fetch(`${server.baseUrl}/api/export`, {
+    const response = await fetch(`${server.baseUrl}/api/missing`, {
       method: "POST",
     });
     const body = await response.json();
 
     assert.equal(response.status, 404);
     assert.equal(body.code, "NOT_FOUND");
-    assert.match(body.error, /API route POST \/api\/export was not found/);
+    assert.match(body.error, /API route POST \/api\/missing was not found/);
   } finally {
     await server.close();
   }

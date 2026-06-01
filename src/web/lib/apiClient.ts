@@ -1,5 +1,7 @@
 import type {
   ApiErrorBody,
+  ExportRequest,
+  ExportResultMetadata,
   GenerationRequest,
   GenerationResultMetadata,
   GenerateWallpaperResponse,
@@ -68,6 +70,18 @@ function metadataFromHeaders(response: Response): GenerationResultMetadata {
   };
 }
 
+function exportMetadataFromHeaders(response: Response): ExportResultMetadata {
+  return {
+    ...metadataFromHeaders(response),
+    format:
+      (response.headers.get("x-wallpaper-export-format") as ExportResultMetadata["format"]) ||
+      "png",
+    renderer:
+      (response.headers.get("x-wallpaper-renderer") as ExportResultMetadata["renderer"]) ||
+      "server-cpu",
+  };
+}
+
 export function getHealth(): Promise<HealthResponse> {
   return getJson<HealthResponse>("/api/health");
 }
@@ -99,6 +113,23 @@ export async function generateWallpaper(
   };
 }
 
-export function exportWallpaper() {
-  throw new Error("Dedicated export API is planned for Prompt 10.");
+export async function exportWallpaper(
+  request: ExportRequest,
+): Promise<{ blob: Blob; metadata: ExportResultMetadata }> {
+  const response = await fetch("/api/export", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    await parseApiError(response);
+  }
+
+  return {
+    blob: await response.blob(),
+    metadata: exportMetadataFromHeaders(response),
+  };
 }

@@ -3,9 +3,12 @@ const { generateWallpaper } = require("../generateWallpaper");
 const { ValidationError } = require("../generation/validation");
 const { createDownloadFilename } = require("../generation/output");
 const { listGeneratorMetadata } = require("../generators");
-const { CONTRACT_VERSION } = require("../shared/generationContract");
+const { CONTRACT_VERSION, EXPORT_FORMATS } = require("../shared/generationContract");
 const { ERROR_CODES, sendError } = require("./errors");
-const { normalizeGenerationRequest } = require("./generationRequest");
+const {
+  normalizeExportRequest,
+  normalizeGenerationRequest,
+} = require("./generationRequest");
 
 function createGenerationMetadata(result, filename, elapsedMs) {
   return {
@@ -20,10 +23,23 @@ function createGenerationMetadata(result, filename, elapsedMs) {
   };
 }
 
-function setGenerationHeaders(res, result, metadata) {
+function createExportMetadata(result, filename, elapsedMs, format = "png") {
+  return {
+    ...createGenerationMetadata(result, filename, elapsedMs),
+    format,
+    renderer: "server-cpu",
+  };
+}
+
+function setGenerationHeaders(
+  res,
+  result,
+  metadata,
+  disposition = "inline",
+) {
   res.set({
     "Cache-Control": "no-store",
-    "Content-Disposition": `inline; filename="${metadata.filename}"`,
+    "Content-Disposition": `${disposition}; filename="${metadata.filename}"`,
     "Content-Length": result.buffer.length,
     "Content-Type": "image/png",
     "X-Generation-Time-Ms": metadata.elapsedMs.toFixed(1),
@@ -35,6 +51,13 @@ function setGenerationHeaders(res, result, metadata) {
     "X-Wallpaper-Resolution": `${metadata.width}x${metadata.height}`,
     "X-Wallpaper-Seed": metadata.seed,
   });
+
+  if (metadata.format) {
+    res.set({
+      "X-Wallpaper-Export-Format": metadata.format,
+      "X-Wallpaper-Renderer": metadata.renderer,
+    });
+  }
 }
 
 function sendGenerationError(res, error) {
@@ -83,6 +106,48 @@ async function generateImage(req, res) {
   }
 }
 
+function validateExportRequest(request) {
+  if (!EXPORT_FORMATS.includes(request.format)) {
+    throw new ValidationError("Invalid wallpaper export request.", [
+      `format must be one of: ${EXPORT_FORMATS.join(", ")}.`,
+    ]);
+  }
+
+  return request;
+}
+
+async function exportImage(req, res) {
+  const startedAt = process.hrtime.bigint();
+  const createdAt = new Date();
+
+  try {
+    const exportRequest = validateExportRequest(
+      normalizeExportRequest(req.body),
+    );
+    const result = await generateWallpaper(exportRequest);
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const filename = createDownloadFilename({
+      generationType: result.generationType,
+      width: result.width,
+      height: result.height,
+      seed: result.seed,
+      createdAt,
+      format: exportRequest.format,
+    });
+    const metadata = createExportMetadata(
+      result,
+      filename,
+      elapsedMs,
+      exportRequest.format,
+    );
+
+    setGenerationHeaders(res, result, metadata, "attachment");
+    res.send(result.buffer);
+  } catch (error) {
+    sendGenerationError(res, error);
+  }
+}
+
 function createApiRouter() {
   const router = express.Router();
 
@@ -101,6 +166,7 @@ function createApiRouter() {
   });
 
   router.post("/generate", generateImage);
+  router.post("/export", exportImage);
 
   router.use((req, res) => {
     sendError(
@@ -116,8 +182,11 @@ function createApiRouter() {
 
 module.exports = {
   createApiRouter,
+  createExportMetadata,
   createGenerationMetadata,
+  exportImage,
   generateImage,
+  normalizeExportRequest,
   normalizeGenerationRequest,
   setGenerationHeaders,
 };

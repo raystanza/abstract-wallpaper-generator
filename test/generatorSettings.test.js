@@ -120,6 +120,29 @@ test("generation requests are stable and compatible with the existing API", () =
   });
 });
 
+test("export requests use full output settings and png format", () => {
+  const shapes = getGenerator("shapes");
+  const settings = settingsHelpers.updateGeneratorParameter(
+    settingsHelpers.createDefaultGeneratorSettings(shapes, {
+      width: 2560,
+      height: 1440,
+      seed: "export-seed",
+    }),
+    shapes,
+    "shapes",
+    24,
+  );
+  const request = settingsHelpers.createExportRequest(settings, shapes);
+
+  assert.equal(request.width, 2560);
+  assert.equal(request.height, 1440);
+  assert.equal(request.size.width, 2560);
+  assert.equal(request.size.height, 1440);
+  assert.equal(request.format, "png");
+  assert.equal(request.seed, "export-seed");
+  assert.equal(request.shapes, 24);
+});
+
 test("every generator resolves settings and a valid request", () => {
   for (const generator of listGeneratorMetadata()) {
     const settings = settingsHelpers.createDefaultGeneratorSettings(generator);

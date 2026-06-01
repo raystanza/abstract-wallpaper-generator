@@ -177,7 +177,13 @@ export type GenerationResultMetadata = {
 
 export type ExportRequest = GenerationRequest & {
   format: ExportFormat;
-  size: WallpaperSize;
+  size?: WallpaperSize;
+  batchSeeds?: Seed[];
+};
+
+export type ExportResultMetadata = GenerationResultMetadata & {
+  format: ExportFormat;
+  renderer: RenderMode;
 };
 
 export type GeneratorResponse = {

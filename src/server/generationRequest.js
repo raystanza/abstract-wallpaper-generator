@@ -29,7 +29,25 @@ function normalizeGenerationRequest(body = {}) {
   };
 }
 
+function normalizeExportRequest(body = {}) {
+  const size = body.size || {};
+
+  return {
+    ...normalizeGenerationRequest({
+      ...body,
+      width: body.width ?? size.width,
+      height: body.height ?? size.height,
+    }),
+    format: body.format || "png",
+    size: {
+      width: body.width ?? size.width,
+      height: body.height ?? size.height,
+    },
+  };
+}
+
 module.exports = {
+  normalizeExportRequest,
   normalizeGenerationRequest,
   normalizeShapeTypes,
 };
