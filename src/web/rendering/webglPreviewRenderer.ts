@@ -6,6 +6,8 @@ import type {
   PreviewRendererOptions,
 } from "./types";
 
+const MAX_WEBGL_PREVIEW_PIXELS = 1_440_000;
+
 const vertexShaderSource = `#version 300 es
 in vec2 a_position;
 out vec2 v_uv;
@@ -308,8 +310,14 @@ export class WebGLPreviewRenderer implements PreviewRenderer {
     const gl = this.gl;
     const pixelRatio = this.options.capabilities.clampedDevicePixelRatio;
     const rect = this.canvas.getBoundingClientRect();
-    const width = Math.max(1, Math.floor(rect.width * pixelRatio));
-    const height = Math.max(1, Math.floor(rect.height * pixelRatio));
+    const rawWidth = Math.max(1, Math.floor(rect.width * pixelRatio));
+    const rawHeight = Math.max(1, Math.floor(rect.height * pixelRatio));
+    const pixelScale = Math.min(
+      1,
+      Math.sqrt(MAX_WEBGL_PREVIEW_PIXELS / Math.max(1, rawWidth * rawHeight)),
+    );
+    const width = Math.max(1, Math.floor(rawWidth * pixelScale));
+    const height = Math.max(1, Math.floor(rawHeight * pixelScale));
 
     if (this.canvas.width !== width || this.canvas.height !== height) {
       this.canvas.width = width;

@@ -96,13 +96,16 @@ Preview flow:
 
 1. The studio serializes the current `GenerationRequest` with stable key ordering.
 2. High-frequency control changes are debounced before rendering. Expensive requests, such as high-density or fractal previews, use a longer debounce.
-3. If auto preview is enabled, the hook selects WebGL2 when browser capability detection supports it; otherwise it uses the server preview path.
-4. If auto preview is disabled, settings changes mark the preview as pending until the creator presses refresh.
-5. Server fallback uses `AbortController` so newer requests cancel older `POST /api/generate` calls.
-6. Each render run has a monotonically increasing run id, preventing stale GPU or server results from replacing newer previews.
-7. Server preview object URLs are revoked when replaced and on unmount.
+3. Preview dimensions are capped to `MAX_PREVIEW_PIXELS` while preserving the selected output aspect ratio.
+4. If auto preview is enabled, the hook selects WebGL2 when browser capability detection supports it; otherwise it uses the server preview path.
+5. If auto preview is disabled, settings changes mark the preview as pending until the creator presses refresh.
+6. Server fallback uses `AbortController` so newer requests cancel older `POST /api/generate` calls.
+7. Each render run has a monotonically increasing run id, preventing stale GPU or server results from replacing newer previews.
+8. Server preview object URLs are revoked when replaced and on unmount.
 
 The preview header exposes auto preview, server-forced preview, manual refresh, and seed randomization. The inspector reports renderer mode, preview status, elapsed time, preview resolution, seed, and capability diagnostics. Final export is separate from this preview loop and uses the reliable server CPU path.
+
+WebGL preview canvases are also capped by pixel count after device-pixel-ratio scaling. This keeps large displays and high-DPI devices from allocating oversized live-preview buffers while preserving the visible canvas size.
 
 ## Export Pipeline
 
@@ -225,6 +228,16 @@ The shared helpers in `src/shared/projectState.mjs` keep this behavior testable:
 - `parseProjectState()`
 
 Restoring a history item or local session re-sanitizes settings through current generator metadata. If a generator is no longer available, the item is left in history but cannot replace the active settings.
+
+Malformed or outdated local session data is handled as recoverable. The app reports the recovery in the workflow status area, falls back to valid defaults when needed, and rewrites storage with a valid session on the next successful persist. If a browser blocks storage writes, the studio continues to run and reports that local saving is unavailable.
+
+## Accessibility And Resilience
+
+The React entry is wrapped in an app-level error boundary so unexpected component failures show a reloadable error state instead of a blank page. The studio exposes a screen-reader-only live status summary for API, preview, export, and workflow changes. Validation errors use `role="alert"`, and visual status badges include text labels rather than relying on color alone.
+
+Keyboard operation uses native form controls and buttons for generator selection, parameters, seed actions, preview refresh, export, and history actions. The CSS includes visible focus rings and a reduced-motion media query that disables transitions for users who request it.
+
+The API client treats malformed JSON error bodies and corrupted metadata headers as recoverable: it falls back to stable error messages or individual metadata headers instead of throwing unrelated parsing errors.
 
 ## Server API
 

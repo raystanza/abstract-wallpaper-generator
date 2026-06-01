@@ -1,5 +1,6 @@
 const DEFAULT_PREVIEW_DEBOUNCE_MS = 220;
 const EXPENSIVE_GENERATOR_CATEGORIES = new Set(["fractal", "simulation"]);
+const MAX_PREVIEW_PIXELS = 960 * 540;
 
 function stableValue(value) {
   if (Array.isArray(value)) {
@@ -45,6 +46,29 @@ function previewDebounceMs(request, generator) {
   return DEFAULT_PREVIEW_DEBOUNCE_MS;
 }
 
+function capPreviewSize(size, maxPixels = MAX_PREVIEW_PIXELS) {
+  const width = Number(size?.width);
+  const height = Number(size?.height);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return { width: 960, height: 540 };
+  }
+
+  const pixels = width * height;
+  if (pixels <= maxPixels) {
+    return {
+      width: Math.round(width),
+      height: Math.round(height),
+    };
+  }
+
+  const scale = Math.sqrt(maxPixels / pixels);
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
 function choosePreviewRenderMode({
   autoPreview,
   capabilities,
@@ -82,6 +106,8 @@ function createPreviewMetrics({ mode, request, elapsedMs }) {
 
 const previewOrchestration = {
   DEFAULT_PREVIEW_DEBOUNCE_MS,
+  MAX_PREVIEW_PIXELS,
+  capPreviewSize,
   choosePreviewRenderMode,
   createPreviewMetrics,
   isExpensivePreviewRequest,
@@ -91,6 +117,8 @@ const previewOrchestration = {
 
 export {
   DEFAULT_PREVIEW_DEBOUNCE_MS,
+  MAX_PREVIEW_PIXELS,
+  capPreviewSize,
   choosePreviewRenderMode,
   createPreviewMetrics,
   isExpensivePreviewRequest,

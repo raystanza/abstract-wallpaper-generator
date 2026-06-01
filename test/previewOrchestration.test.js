@@ -106,6 +106,21 @@ test("preview debounce increases for expensive requests", () => {
   );
 });
 
+test("preview size capping preserves aspect ratio within budget", () => {
+  assert.deepEqual(
+    previewHelpers.capPreviewSize({ width: 3840, height: 2160 }),
+    { width: 960, height: 540 },
+  );
+  assert.deepEqual(
+    previewHelpers.capPreviewSize({ width: 1440, height: 2560 }),
+    { width: 540, height: 960 },
+  );
+  assert.deepEqual(previewHelpers.capPreviewSize(null), {
+    width: 960,
+    height: 540,
+  });
+});
+
 test("preview metrics are compact and deterministic", () => {
   assert.deepEqual(
     previewHelpers.createPreviewMetrics({

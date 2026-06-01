@@ -27,11 +27,26 @@ async function parseApiError(response: Response) {
   const contentType = response.headers.get("content-type") || "";
 
   if (contentType.includes("application/json")) {
-    const body = (await response.json()) as ApiErrorBody;
+    let body: ApiErrorBody;
+    try {
+      body = (await response.json()) as ApiErrorBody;
+    } catch {
+      body = {
+        error: `Request failed with status ${response.status}.`,
+        code: "INVALID_ERROR_RESPONSE",
+      };
+    }
+    if (!body || typeof body.error !== "string" || typeof body.code !== "string") {
+      body = {
+        error: `Request failed with status ${response.status}.`,
+        code: "INVALID_ERROR_RESPONSE",
+      };
+    }
     throw new ApiClientError(response.status, body);
   }
 
-  throw new Error(await response.text());
+  const text = await response.text();
+  throw new Error(text || `Request failed with status ${response.status}.`);
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -48,7 +63,12 @@ function metadataFromHeaders(response: Response): GenerationResultMetadata {
   const metadataHeader = response.headers.get("x-wallpaper-metadata");
 
   if (metadataHeader) {
-    return JSON.parse(metadataHeader) as GenerationResultMetadata;
+    try {
+      return JSON.parse(metadataHeader) as GenerationResultMetadata;
+    } catch {
+      // Fall through to individual headers when a proxy or extension corrupts
+      // the compact metadata header.
+    }
   }
 
   const [width = "0", height = "0"] = (
@@ -60,14 +80,26 @@ function metadataFromHeaders(response: Response): GenerationResultMetadata {
     width: Number(width),
     height: Number(height),
     colorPalette: response.headers.get("x-wallpaper-palette") || "",
-    background: JSON.parse(
-      response.headers.get("x-wallpaper-background") ||
-        '{"type":"solid","colors":["#101820"],"direction":"diagonal"}',
-    ) as GenerationResultMetadata["background"],
+    background: parseBackgroundHeader(response),
     seed: response.headers.get("x-wallpaper-seed") || "",
     filename: response.headers.get("x-wallpaper-filename") || undefined,
     elapsedMs: Number(response.headers.get("x-generation-time-ms") || 0),
   };
+}
+
+function parseBackgroundHeader(response: Response): GenerationResultMetadata["background"] {
+  try {
+    return JSON.parse(
+      response.headers.get("x-wallpaper-background") ||
+        '{"type":"solid","colors":["#101820"],"direction":"diagonal"}',
+    ) as GenerationResultMetadata["background"];
+  } catch {
+    return {
+      type: "solid",
+      colors: ["#101820"],
+      direction: "diagonal",
+    };
+  }
 }
 
 function exportMetadataFromHeaders(response: Response): ExportResultMetadata {

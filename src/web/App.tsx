@@ -43,6 +43,7 @@ import {
   toggleHistoryFavorite,
   upsertHistoryItem,
 } from "../shared/projectState.mjs";
+import { capPreviewSize } from "../shared/previewOrchestration.mjs";
 import {
   applyWallpaperPreset,
   listWallpaperPresets,
@@ -61,7 +62,7 @@ import {
   StatusBadge,
   Toggle,
 } from "./components/ui";
-import { exportWallpaper, getGenerators } from "./lib/apiClient";
+import { ApiClientError, exportWallpaper, getGenerators } from "./lib/apiClient";
 import { rendererModeLabel } from "./rendering";
 import { getPreviewPalette } from "./rendering/palettes";
 import { useWallpaperPreview } from "./rendering/useWallpaperPreview";
@@ -243,6 +244,40 @@ function historySourceLabel(source: WallpaperHistoryItem["source"]) {
   return "Preview";
 }
 
+function formatErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiClientError) {
+    return error.details?.[0] ?? error.message;
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
+
+function readProjectStorage() {
+  try {
+    return localStorage.getItem(PROJECT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeProjectStorage(value: string) {
+  try {
+    localStorage.setItem(PROJECT_STORAGE_KEY, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeProjectStorage() {
+  try {
+    localStorage.removeItem(PROJECT_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const exportUrlsRef = useRef<string[]>([]);
@@ -295,11 +330,12 @@ export default function App() {
 
         const firstGenerator = nextGenerators[0];
         setGenerators(nextGenerators);
-        const storedProject = localStorage.getItem(PROJECT_STORAGE_KEY);
+        const storedProject = readProjectStorage();
         const restoredProject = storedProject
           ? parseProjectState(storedProject, nextGenerators)
           : { state: null, errors: [] };
         const restoredSettings = restoredProject.state?.settings;
+        const restoredWithErrors = restoredProject.errors.length > 0;
 
         setSettings(
           restoredSettings ??
@@ -309,11 +345,15 @@ export default function App() {
         );
         setSavedSettings(restoredProject.state?.savedSettings ?? null);
         setHistoryItems(restoredProject.state?.history ?? []);
-        setWorkflowTone(restoredProject.state ? "success" : "neutral");
+        setWorkflowTone(
+          restoredWithErrors ? "warning" : restoredProject.state ? "success" : "neutral",
+        );
         setWorkflowMessage(
-          restoredProject.state
-            ? "Last local session restored"
-            : "Settings ready",
+          restoredWithErrors
+            ? `Local session recovered: ${restoredProject.errors[0]}`
+            : restoredProject.state
+              ? "Last local session restored"
+              : "Settings ready",
         );
         setApiStatus("ready");
         setApiMessage(`${nextGenerators.length} generators`);
@@ -324,9 +364,7 @@ export default function App() {
         }
 
         setApiStatus("error");
-        setApiMessage(
-          error instanceof Error ? error.message : "API unavailable",
-        );
+        setApiMessage(formatErrorMessage(error, "API unavailable"));
         setProjectReady(true);
       }
     }
@@ -343,14 +381,18 @@ export default function App() {
       return;
     }
 
-    localStorage.setItem(
-      PROJECT_STORAGE_KEY,
+    const persisted = writeProjectStorage(
       serializeProjectState({
         history: historyItems,
         savedSettings,
         settings,
       }),
     );
+
+    if (!persisted) {
+      setWorkflowTone("warning");
+      setWorkflowMessage("Local session could not be saved by this browser");
+    }
   }, [generators.length, historyItems, projectReady, savedSettings, settings]);
 
   const selectedGenerator = useMemo(() => {
@@ -430,13 +472,15 @@ export default function App() {
     });
   }, [presetQuery]);
 
+  const paletteEntries = useMemo(() => listPaletteEntries(), []);
+
   const previewRequest = useMemo<GenerationRequest | null>(() => {
     if (!settings || !selectedGenerator || validationMessages.length > 0) {
       return null;
     }
 
     return createGenerationRequest(settings, selectedGenerator, {
-      previewSize: { width: 960, height: 540 },
+      previewSize: capPreviewSize({ width: settings.width, height: settings.height }),
       seedFallback: `preview-${selectedGenerator.id}`,
     });
   }, [selectedGenerator, settings, validationMessages.length]);
@@ -691,20 +735,23 @@ export default function App() {
     }
 
     setSavedSettings(settings);
-    localStorage.setItem(
-      PROJECT_STORAGE_KEY,
+    const saved = writeProjectStorage(
       serializeProjectState({
         history: historyItems,
         savedSettings: settings,
         settings,
       }),
     );
-    setWorkflowTone("success");
-    setWorkflowMessage("Current settings saved locally");
+    setWorkflowTone(saved ? "success" : "warning");
+    setWorkflowMessage(
+      saved
+        ? "Current settings saved locally"
+        : "Local session could not be saved by this browser",
+    );
   }
 
   function handleRestoreSession() {
-    const storedProject = localStorage.getItem(PROJECT_STORAGE_KEY);
+    const storedProject = readProjectStorage();
 
     if (!storedProject) {
       setWorkflowTone("warning");
@@ -734,7 +781,7 @@ export default function App() {
       return;
     }
 
-    localStorage.removeItem(PROJECT_STORAGE_KEY);
+    removeProjectStorage();
     setHistoryItems([]);
     setSavedSettings(null);
     setSettings(
@@ -836,7 +883,7 @@ export default function App() {
       setExportStatus("ready");
     } catch (error) {
       setExportStatus("error");
-      setExportMessage(error instanceof Error ? error.message : "Export failed");
+      setExportMessage(formatErrorMessage(error, "Export failed"));
     }
   }
 
@@ -1057,7 +1104,7 @@ export default function App() {
             ))}
           </div>
           <div className="palette-grid" aria-label="Palette choices">
-            {listPaletteEntries().map((palette) => (
+            {paletteEntries.map((palette) => (
               <button
                 aria-pressed={palette.id === paletteName}
                 className="palette-choice"
@@ -1226,6 +1273,9 @@ export default function App() {
           </Button>
         </div>
       </header>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {apiMessage}. {previewMessage}. {exportMessage}. {workflowMessage}.
+      </div>
 
       <section
         className="studio-layout"
@@ -1333,7 +1383,11 @@ export default function App() {
               />
             </div>
             {validationMessages.length > 0 ? (
-              <ul className="validation-list" aria-label="Validation messages">
+              <ul
+                className="validation-list"
+                aria-label="Validation messages"
+                role="alert"
+              >
                 {validationMessages.map((message) => (
                   <li key={message}>{message}</li>
                 ))}
@@ -1432,7 +1486,7 @@ export default function App() {
                 alt="Server-rendered abstract wallpaper preview"
               />
             ) : null}
-            <div className="preview-overlay">
+            <div className="preview-overlay" aria-live="polite">
               <StatusBadge tone={statusTone(previewStatus)}>
                 {previewMessage}
               </StatusBadge>
@@ -1472,6 +1526,9 @@ export default function App() {
                 {historyItems.map((item) => (
                   <article className="history-item" key={item.id}>
                     <button
+                      aria-label={`Restore ${formatCategory(
+                        item.generatorId,
+                      )} history item with seed ${item.resolvedSeed || "auto seed"}`}
                       className="history-thumbnail"
                       onClick={() => handleRestoreHistory(item)}
                       style={{
