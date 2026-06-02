@@ -290,6 +290,7 @@ h3 {
 .control:focus-visible,
 .control--select:focus-visible,
 .button:focus-visible,
+.collapsible-trigger:focus-visible,
 .icon-button:focus-visible,
 .slider:focus-visible,
 .toggle input:focus-visible + .toggle__track,
@@ -449,11 +450,79 @@ h3 {
 }
 
 .parameter-control,
+.collapsible-content,
 .advanced-controls,
 .export-panel {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
+}
+
+.collapsible-section {
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.collapsible-section:last-child {
+  border-bottom: 0;
+}
+
+.collapsible-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text);
+  outline: 0;
+  padding: 6px 2px 6px 0;
+  text-align: left;
+}
+
+.collapsible-trigger:hover {
+  color: var(--color-accent-strong);
+}
+
+.collapsible-trigger svg {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+
+.collapsible-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 820;
+}
+
+.collapsible-title > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsible-summary {
+  max-width: 150px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 780;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsible-content {
+  padding: 0 0 var(--space-2);
 }
 
 .multi-option {

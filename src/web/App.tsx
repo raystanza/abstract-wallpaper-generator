@@ -19,7 +19,7 @@ import {
   Wand2,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BackgroundSpec,
   GenerationRequest,
@@ -99,6 +99,63 @@ const groupLabels: Record<ParameterGroupName, { eyebrow: string; title: string }
     seed: { eyebrow: "Seed", title: "Variation" },
     advanced: { eyebrow: "Advanced", title: "Fine Tune" },
   };
+
+type CollapsibleSectionProps = {
+  children: ReactNode;
+  defaultOpen?: boolean;
+  eyebrow?: string;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  summary?: ReactNode;
+  title: string;
+};
+
+function CollapsibleSection({
+  children,
+  defaultOpen = false,
+  eyebrow,
+  onOpenChange,
+  open,
+  summary,
+  title,
+}: CollapsibleSectionProps) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const expanded = open ?? internalOpen;
+  const Icon = expanded ? ChevronUp : ChevronDown;
+
+  function handleToggle() {
+    const nextOpen = !expanded;
+
+    if (open === undefined) {
+      setInternalOpen(nextOpen);
+    }
+
+    onOpenChange?.(nextOpen);
+  }
+
+  return (
+    <section
+      className={`panel-section collapsible-section ${
+        expanded ? "is-open" : ""
+      }`.trim()}
+    >
+      <button
+        aria-expanded={expanded}
+        className="collapsible-trigger"
+        onClick={handleToggle}
+        type="button"
+      >
+        <span className="collapsible-title">
+          {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
+          <span>{title}</span>
+        </span>
+        {summary ? <span className="collapsible-summary">{summary}</span> : null}
+        <Icon aria-hidden="true" size={17} strokeWidth={2.2} />
+      </button>
+      {expanded ? <div className="collapsible-content">{children}</div> : null}
+    </section>
+  );
+}
 
 function formatCategory(value: string) {
   return value
@@ -1245,6 +1302,20 @@ export default function App() {
   const presetValue = settings
     ? presetValueForSize(settings.width, settings.height)
     : "custom";
+  const backgroundSummary = settings
+    ? formatCategory(normalizeBackground(settings.background).type)
+    : "Background";
+  const canvasSummary = settings
+    ? `${settings.width} x ${settings.height}`
+    : "1920 x 1080";
+  const seedSummary = settings?.seedLocked
+    ? "Locked"
+    : settings?.seed
+      ? "Custom"
+      : "Auto";
+  const styleSummary = settings
+    ? `${settings.palette} / ${backgroundSummary}`
+    : "Palette / background";
 
   return (
     <main className="app-frame" aria-labelledby="app-title">
@@ -1285,8 +1356,12 @@ export default function App() {
           className="studio-panel studio-panel--settings"
           aria-label="Generator settings"
         >
-          <PanelHeader eyebrow="Setup" title="Generator" />
-          <div className="panel-section">
+          <CollapsibleSection
+            defaultOpen
+            eyebrow="Setup"
+            summary={selectedCategory}
+            title="Generator"
+          >
             <SelectField
               disabled={generators.length === 0}
               label="Algorithm"
@@ -1311,10 +1386,13 @@ export default function App() {
               <StatusBadge>{selectedParameterCount} controls</StatusBadge>
               <StatusBadge>{categories.length} categories</StatusBadge>
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <PanelHeader eyebrow="Presets" title="Starting Points" />
+          <CollapsibleSection
+            eyebrow="Presets"
+            summary={`${filteredPresets.length} matches`}
+            title="Starting Points"
+          >
             <InputField
               label="Search presets"
               onChange={setPresetQuery}
@@ -1349,10 +1427,14 @@ export default function App() {
                 </button>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <PanelHeader eyebrow="Canvas" title="Output" />
+          <CollapsibleSection
+            defaultOpen
+            eyebrow="Canvas"
+            summary={canvasSummary}
+            title="Output"
+          >
             <SegmentedControl
               label="Preset"
               onChange={handlePresetChange}
@@ -1395,46 +1477,48 @@ export default function App() {
             ) : (
               <StatusBadge tone="success">Request ready</StatusBadge>
             )}
-          </div>
+          </CollapsibleSection>
 
           {(["generator", "style"] as const).map((groupName) =>
             groupedParameters[groupName].length > 0 ? (
-              <div className="panel-section" key={groupName}>
-                <PanelHeader
-                  eyebrow={groupLabels[groupName].eyebrow}
-                  title={groupLabels[groupName].title}
-                />
+              <CollapsibleSection
+                defaultOpen={groupName === "generator"}
+                eyebrow={groupLabels[groupName].eyebrow}
+                key={groupName}
+                summary={
+                  groupName === "style"
+                    ? styleSummary
+                    : `${groupedParameters[groupName].length} controls`
+                }
+                title={groupLabels[groupName].title}
+              >
                 {groupedParameters[groupName].map(renderParameterControl)}
-              </div>
+              </CollapsibleSection>
             ) : null,
           )}
 
           {groupedParameters.advanced.length > 0 ? (
-            <div className="panel-section">
-              <Button
-                className="advanced-toggle"
-                icon={advancedOpen ? ChevronUp : ChevronDown}
-                onClick={() => setAdvancedOpen((open) => !open)}
-                variant="ghost"
-              >
-                {advancedOpen ? "Hide advanced" : "Show advanced"}
-              </Button>
-              {advancedOpen ? (
-                <div className="advanced-controls">
-                  {groupedParameters.advanced.map(renderParameterControl)}
-                </div>
-              ) : null}
-            </div>
+            <CollapsibleSection
+              eyebrow={groupLabels.advanced.eyebrow}
+              onOpenChange={setAdvancedOpen}
+              open={advancedOpen}
+              summary={`${groupedParameters.advanced.length} controls`}
+              title={groupLabels.advanced.title}
+            >
+              <div className="advanced-controls">
+                {groupedParameters.advanced.map(renderParameterControl)}
+              </div>
+            </CollapsibleSection>
           ) : null}
 
           {groupedParameters.seed.length > 0 ? (
-            <div className="panel-section">
-              <PanelHeader
-                eyebrow={groupLabels.seed.eyebrow}
-                title={groupLabels.seed.title}
-              />
+            <CollapsibleSection
+              eyebrow={groupLabels.seed.eyebrow}
+              summary={seedSummary}
+              title={groupLabels.seed.title}
+            >
               {groupedParameters.seed.map(renderParameterControl)}
-            </div>
+            </CollapsibleSection>
           ) : null}
         </aside>
 
@@ -1604,8 +1688,12 @@ export default function App() {
             title="Details"
           />
 
-          <div className="panel-section">
-            <h3 className="section-caption">Renderer</h3>
+          <CollapsibleSection
+            defaultOpen
+            eyebrow="Preview"
+            summary={rendererModeLabel(activeMode)}
+            title="Renderer"
+          >
             <div className="metric-list">
               <div>
                 <span>Mode</span>
@@ -1647,10 +1735,13 @@ export default function App() {
                 ),
               )}
             </dl>
-          </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <h3 className="section-caption">Parameters</h3>
+          <CollapsibleSection
+            eyebrow="Settings"
+            summary={`${selectedParameterCount} controls`}
+            title="Parameters"
+          >
             <div className="parameter-list">
               {(selectedGenerator?.parameters ?? []).map((parameter) => (
                 <div className="parameter-row" key={parameter.id}>
@@ -1666,74 +1757,70 @@ export default function App() {
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <PanelHeader
-              actions={
-                <IconButton
-                  icon={exportOpen ? ChevronUp : ChevronDown}
-                  label={exportOpen ? "Hide export settings" : "Show export settings"}
-                  onClick={() => setExportOpen((open) => !open)}
-                />
-              }
-              eyebrow="Export"
-              title="Final Output"
-            />
-            {exportOpen ? (
-              <div className="export-panel">
-                <div className="metric-list">
-                  <div>
-                    <span>Format</span>
-                    <strong>PNG</strong>
-                  </div>
-                  <div>
-                    <span>Renderer</span>
-                    <strong>Server CPU</strong>
-                  </div>
-                  <div>
-                    <span>Resolution</span>
-                    <strong>
-                      {settings?.width ?? 1920} x {settings?.height ?? 1080}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Filename</span>
-                    <strong>{filenamePreview}</strong>
-                  </div>
+          <CollapsibleSection
+            eyebrow="Export"
+            onOpenChange={setExportOpen}
+            open={exportOpen}
+            summary={canvasSummary}
+            title="Final Output"
+          >
+            <div className="export-panel">
+              <div className="metric-list">
+                <div>
+                  <span>Format</span>
+                  <strong>PNG</strong>
                 </div>
-                <label className="field">
-                  <span className="field__label">Batch seeds</span>
-                  <textarea
-                    aria-label="Batch export seeds"
-                    className="control settings-json"
-                    onChange={(event) => setBatchSeeds(event.target.value)}
-                    placeholder="Optional: one seed per line"
-                    value={batchSeeds}
-                  />
-                  <span className="field__hint">
-                    Blank exports the current seed. Up to 12 seeds run one at a time.
-                  </span>
-                </label>
-                <Button
-                  disabled={!exportRequest || exportStatus === "exporting"}
-                  icon={Download}
-                  onClick={() => void handleExport()}
-                  variant="primary"
-                >
-                  {seedLines(batchSeeds).length > 0
-                    ? `Export ${seedLines(batchSeeds).length} PNGs`
-                    : "Export PNG"}
-                </Button>
-                <StatusBadge tone={statusTone(exportStatus)}>
-                  {exportMessage}
-                </StatusBadge>
+                <div>
+                  <span>Renderer</span>
+                  <strong>Server CPU</strong>
+                </div>
+                <div>
+                  <span>Resolution</span>
+                  <strong>
+                    {settings?.width ?? 1920} x {settings?.height ?? 1080}
+                  </strong>
+                </div>
+                <div>
+                  <span>Filename</span>
+                  <strong>{filenamePreview}</strong>
+                </div>
               </div>
-            ) : null}
-          </div>
+              <label className="field">
+                <span className="field__label">Batch seeds</span>
+                <textarea
+                  aria-label="Batch export seeds"
+                  className="control settings-json"
+                  onChange={(event) => setBatchSeeds(event.target.value)}
+                  placeholder="Optional: one seed per line"
+                  value={batchSeeds}
+                />
+                <span className="field__hint">
+                  Blank exports the current seed. Up to 12 seeds run one at a time.
+                </span>
+              </label>
+              <Button
+                disabled={!exportRequest || exportStatus === "exporting"}
+                icon={Download}
+                onClick={() => void handleExport()}
+                variant="primary"
+              >
+                {seedLines(batchSeeds).length > 0
+                  ? `Export ${seedLines(batchSeeds).length} PNGs`
+                  : "Export PNG"}
+              </Button>
+              <StatusBadge tone={statusTone(exportStatus)}>
+                {exportMessage}
+              </StatusBadge>
+            </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <PanelHeader eyebrow="Workflow" title="Share" />
+          <CollapsibleSection
+            eyebrow="Workflow"
+            summary={workflowMessage}
+            title="Share"
+          >
             <div className="workflow-actions workflow-actions--project">
               <Button icon={Plus} onClick={handleNewSession} variant="secondary">
                 New
@@ -1773,10 +1860,13 @@ export default function App() {
               value={settingsJson}
             />
             <StatusBadge tone={workflowTone}>{workflowMessage}</StatusBadge>
-          </div>
+          </CollapsibleSection>
 
-          <div className="panel-section">
-            <h3 className="section-caption">Render Path</h3>
+          <CollapsibleSection
+            eyebrow="Diagnostics"
+            summary={activeMode === "webgl2" ? "GPU preview" : "Server preview"}
+            title="Render Path"
+          >
             <div className="render-path">
               <div>
                 <Zap aria-hidden="true" size={16} />
@@ -1793,7 +1883,7 @@ export default function App() {
                 <span>{selectedGenerator?.category ?? "generator"}</span>
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
         </aside>
       </section>
     </main>
