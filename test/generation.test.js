@@ -244,6 +244,16 @@ test("new generators render png output through the shared pipeline", async () =>
     "topographic-contours",
     "particle-orbits",
     "circuit-board",
+    "aurora-ribbons",
+    "nebula-clouds",
+    "ink-wash",
+    "stained-glass",
+    "hex-mosaic",
+    "crystalline-lattice",
+    "layered-cutouts",
+    "magnetic-field",
+    "spiral-galaxy",
+    "cellular-automata",
   ];
 
   try {

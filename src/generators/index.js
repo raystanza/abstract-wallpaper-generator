@@ -1,19 +1,29 @@
 const drawBarnsleyFern = require("./barnsley-fern");
+const drawAuroraRibbons = require("./aurora-ribbons");
 const drawBokeh = require("./bokeh");
 const drawBubbles = require("./bubbles");
+const drawCellularAutomata = require("./cellular-automata");
+const drawCrystallineLattice = require("./crystalline-lattice");
 const drawFire = require("./fire");
 const drawFlowField = require("./flow-field");
 const drawFractalTree = require("./fractal-tree");
 const drawGradientField = require("./gradient-field");
+const drawHexMosaic = require("./hex-mosaic");
 const drawIce = require("./ice");
+const drawInkWash = require("./ink-wash");
 const drawJuliaSet = require("./julia-set");
 const drawKochSnowflake = require("./koch-snowflake");
+const drawLayeredCutouts = require("./layered-cutouts");
+const drawMagneticField = require("./magnetic-field");
 const drawMandelbrotSet = require("./mandelbrot-set");
 const drawMoireInterference = require("./moire-interference");
+const drawNebulaClouds = require("./nebula-clouds");
 const drawParticleOrbits = require("./particle-orbits");
 const drawShapes = require("./shapes");
 const drawSierpinskiTriangle = require("./sierpinski-triangle");
 const drawSnow = require("./snow");
+const drawSpiralGalaxy = require("./spiral-galaxy");
+const drawStainedGlass = require("./stained-glass");
 const drawTopographicContours = require("./topographic-contours");
 const drawVoronoiCells = require("./voronoi-cells");
 const drawWater = require("./water");
@@ -172,6 +182,54 @@ const generators = {
     parameters: [densityParameter, ...sharedParameters],
     render: drawBokeh,
   },
+  "aurora-ribbons": {
+    id: "aurora-ribbons",
+    name: "Aurora Ribbons",
+    description:
+      "Layered luminous ribbon curves with seeded atmospheric rays and soft palette glow.",
+    category: "atmospheric",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Ribbon Detail",
+        defaultValue: 150,
+      },
+      ...sharedParameters,
+    ],
+    render: drawAuroraRibbons,
+  },
+  "nebula-clouds": {
+    id: "nebula-clouds",
+    name: "Nebula Clouds",
+    description:
+      "Volumetric fractal cloud fields with star detail, palette-mapped gas bands, and vignetted depth.",
+    category: "atmospheric",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Star Detail",
+        defaultValue: 180,
+      },
+      ...sharedParameters,
+    ],
+    render: drawNebulaClouds,
+  },
+  "ink-wash": {
+    id: "ink-wash",
+    name: "Ink Wash",
+    description:
+      "Translucent organic pigment blooms with contour edges and fine seeded splatter.",
+    category: "atmospheric",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Pigment Detail",
+        defaultValue: 140,
+      },
+      ...sharedParameters,
+    ],
+    render: drawInkWash,
+  },
   fire: {
     id: "fire",
     name: "Fire",
@@ -207,6 +265,70 @@ const generators = {
     category: "texture",
     parameters: [densityParameter, ...sharedParameters],
     render: drawWater,
+  },
+  "stained-glass": {
+    id: "stained-glass",
+    name: "Stained Glass",
+    description:
+      "Weighted cellular panes with softened lead lines, luminous fills, and subtle glass striations.",
+    category: "texture",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Pane Density",
+        defaultValue: 90,
+      },
+      ...sharedParameters,
+    ],
+    render: drawStainedGlass,
+  },
+  "hex-mosaic": {
+    id: "hex-mosaic",
+    name: "Hex Mosaic",
+    description:
+      "Jittered hexagonal tiles with radial facet shading, crisp seams, and palette-driven depth.",
+    category: "geometry",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Tile Density",
+        defaultValue: 120,
+      },
+      ...sharedParameters,
+    ],
+    render: drawHexMosaic,
+  },
+  "crystalline-lattice": {
+    id: "crystalline-lattice",
+    name: "Crystalline Lattice",
+    description:
+      "Seeded point facets and luminous nearest-neighbor lattice lines for angular crystal structures.",
+    category: "geometry",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Facet Density",
+        defaultValue: 130,
+      },
+      ...sharedParameters,
+    ],
+    render: drawCrystallineLattice,
+  },
+  "layered-cutouts": {
+    id: "layered-cutouts",
+    name: "Layered Cutouts",
+    description:
+      "Stacked organic paper-cut bands with depth shadows, contour edges, and translucent atmosphere.",
+    category: "geometry",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Layer Detail",
+        defaultValue: 115,
+      },
+      ...sharedParameters,
+    ],
+    render: drawLayeredCutouts,
   },
   "flow-field": {
     id: "flow-field",
@@ -244,6 +366,38 @@ const generators = {
     parameters: [densityParameter, ...sharedParameters],
     render: drawParticleOrbits,
   },
+  "magnetic-field": {
+    id: "magnetic-field",
+    name: "Magnetic Field",
+    description:
+      "Continuous streamlines traced around seeded charged poles with luminous field-node halos.",
+    category: "simulation",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Field Density",
+        defaultValue: 180,
+      },
+      ...sharedParameters,
+    ],
+    render: drawMagneticField,
+  },
+  "spiral-galaxy": {
+    id: "spiral-galaxy",
+    name: "Spiral Galaxy",
+    description:
+      "Particle-built logarithmic spiral arms with glowing core, scattered stars, and palette haze.",
+    category: "simulation",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Particle Detail",
+        defaultValue: 220,
+      },
+      ...sharedParameters,
+    ],
+    render: drawSpiralGalaxy,
+  },
   "circuit-board": {
     id: "circuit-board",
     name: "Circuit Board",
@@ -252,6 +406,22 @@ const generators = {
     category: "systems",
     parameters: [densityParameter, ...sharedParameters],
     render: drawCircuitBoard,
+  },
+  "cellular-automata": {
+    id: "cellular-automata",
+    name: "Cellular Automata",
+    description:
+      "Smoothed seeded automata grids with palette state blending and subtle technical mesh overlays.",
+    category: "systems",
+    parameters: [
+      {
+        ...densityParameter,
+        label: "Cell Detail",
+        defaultValue: 160,
+      },
+      ...sharedParameters,
+    ],
+    render: drawCellularAutomata,
   },
   "domain-warp-noise": {
     id: "domain-warp-noise",
